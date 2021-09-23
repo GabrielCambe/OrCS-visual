@@ -12,7 +12,7 @@ class MyWindow(pyglet.window.Window):
 
     def on_draw(self):
         self.clear()
-        # self.quad.shape.draw(GL_TRIANGLES)
+
         self.quad2.render()
 
 
