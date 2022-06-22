@@ -25,7 +25,7 @@ void FileReader::close(){
 
 int main(int argc, char **argv) {
     FileReader file;
-    file.open("teste.txt");
+    file.open("commands.txt");
     std::cout << file.current_line << std::endl;
     file.readline();
     std::cout << file.current_line << std::endl;
