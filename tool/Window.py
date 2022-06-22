@@ -1,6 +1,7 @@
 import time
 from pyglet.gl import *
 from shapes.common import Triangle
+from operator import add, sub
 
 
 class FileReader:
@@ -34,15 +35,24 @@ class Window(pyglet.window.Window):
         glClearColor(0.5, 0.5, 0.5, 1.0)
 
         self.shapes = {}
-        self.file_reader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/tool/commands.txt")
+        # self.file_reader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/tool/commands.txt")
+        self.file_reader = FileReader("/home/gabriel/Documents/OrCS-visual/tool/commands.txt")
 
     def on_draw(self):
         # print("on_draw")
-        self.clear()
         shape = self.shapes.get("triangle", None)
         if shape:
-            print("shape.points: %s" % shape.points)
-            shape.vertices.draw(GL_TRIANGLES)
+            if shape.animation:
+                def update_shape():
+                    shape.update_points(add, shape.animation["delta_vector"])
+                    self.clear()
+                    shape.vertices.draw(GL_TRIANGLES)
+                shape.animator.run(duration=shape.animation["duration"], callback=update_shape)
+                shape.animation = None
+            else:
+                self.clear()
+                shape.vertices.draw(GL_TRIANGLES)
+
 
     def on_resize(self, width, height):
         glViewport(0, 0, width, height)
@@ -62,7 +72,7 @@ class Window(pyglet.window.Window):
                 triangle = self.shapes.get("triangle", None)
                 if triangle:
                     # TODO aqui você troca o estado do  animator do shape para "MOVING" pois essa função deve retornar antes de on_draw ser chamado
-                    triangle.move_right(duration=1, draw=self.on_draw)
+                    triangle.move_right(duration=1)
 
             if current_line == "move t1 left":
                 triangle = self.shapes.get("triangle", None)

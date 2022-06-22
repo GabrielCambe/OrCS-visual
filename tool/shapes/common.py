@@ -7,7 +7,7 @@ class AnimationControler():
         self.fps = kwargs.get("fps", 24)
         self.status = 'IDLE'
         self.frames_until_idle = 0
-        self.frame_duration = 1.0/self.fps 
+        self.frame_duration = 1.0/self.fps
 
     def get_number_of_frames(self, duration):
         return int(duration * self.fps)
@@ -27,9 +27,6 @@ class AnimationControler():
                 callback()
 
 # TODO: deixar representação das formas separadas dos objetos necessários para sua renderização
-# class Shape():
-#     def __init__(self, *args, **kwargs):
-
 class Triangle():
     def __init__(self):
         # anti-clockwise beginning on lower-left side
@@ -53,6 +50,7 @@ class Triangle():
         )
 
         self.animator = AnimationControler()
+        self.animation = None
     
     def set_points(self, points):
         self.points = points
@@ -66,22 +64,19 @@ class Triangle():
         new_points = [ list( map(operation, point, delta_vector) ) for point in self.points]
         self.set_points(new_points)
 
-
-    def move_right(self, delta=0.5, duration=0, draw=lambda : None):
+    def move_right(self, delta=0.5, duration=0):
         if duration == 0:
             move_vector = [delta, 0, 0]
             self.update_points(add, move_vector)
         else:
             number_of_frames = self.animator.get_number_of_frames(duration)
             delta = delta / number_of_frames
-            move_vector = [delta, 0, 0]
+            delta_vector = [delta, 0, 0]
             
-            def animation():
-                self.update_points(add, move_vector)
-                draw()
-            
-            self.animator.run(duration=duration, callback=animation)
-
+        self.animation = {
+            "duration": duration,
+            "delta_vector": delta_vector
+        }
         
     def move_left(self, delta=0.5, duration=0):
         if duration == 0:
