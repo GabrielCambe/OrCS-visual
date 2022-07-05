@@ -72,11 +72,12 @@ class Triangle():
             number_of_frames = self.animator.get_number_of_frames(duration)
             delta = delta / number_of_frames
             delta_vector = [delta, 0, 0]
-            
-        self.animation = {
-            "duration": duration,
-            "delta_vector": delta_vector
-        }
+
+            self.animation = {
+                "duration": duration,
+                "delta_vector": delta_vector,
+                "frames_until_idle": int(duration / self.animator.frame_duration)
+            }
         
     def move_left(self, delta=0.5, duration=0):
         if duration == 0:
