@@ -50,25 +50,27 @@ class PackageObject(QtWidgets.QGraphicsObject):
         self.update()
 
     def hoverEnterEvent(self, event):
-        self.anim = QtCore.QPropertyAnimation(self, b"pos")
-        self.anim.setEndValue(
-            QtCore.QPointF(
-                self.pos().x() + 5.0,
-                self.pos().y()
+        if self.parentItem() != None:
+            self.anim = QtCore.QPropertyAnimation(self, b"pos")
+            self.anim.setEndValue(
+                QtCore.QPointF(
+                    self.pos().x() + 5.0,
+                    self.pos().y()
+                )
             )
-        )
-        self.anim.setDuration(50)
-        self.anim.start()
+            self.anim.setDuration(50)
+            self.anim.start()
 
     def hoverLeaveEvent(self, event):
-        self.anim = QtCore.QPropertyAnimation(self, b"pos")
-        self.anim.setEndValue(
-            QtCore.QPointF(
-                self.posx, self.posy
+        if self.parentItem() != None:
+            self.anim = QtCore.QPropertyAnimation(self, b"pos")
+            self.anim.setEndValue(
+                QtCore.QPointF(
+                    self.posx, self.posy
+                )
             )
-        )
-        self.anim.setDuration(50)
-        self.anim.start()
+            self.anim.setDuration(50)
+            self.anim.start()
 
     def boundingRect(self):
         return QtCore.QRectF(

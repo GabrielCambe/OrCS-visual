@@ -3,8 +3,8 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 
 import Buffer
 
-#TODO: implementar animação de um pacote sendo movido para outro
 #TODO: pesquisar artgos sobre visualização de arquiteturas em software
+#TODO: iniciar rascunho do TCC no sharelatex, utilizando os picotes que você já escreveu
 
 class WindowWidget(QtWidgets.QMainWindow):
     def __init__(self, title, *args, **kwargs):
