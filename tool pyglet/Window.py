@@ -31,7 +31,7 @@ class Window(pyglet.window.Window):
         glClearColor(0.5, 0.5, 0.5, 1.0)
 
         self.shapes = {}
-        self.file_reader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/tool/commands.txt")
+        self.file_reader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/commands.txt")
         # self.file_reader = FileReader("/home/gabriel/Documents/OrCS-visual/tool/commands.txt")
 
     def on_draw(self):
@@ -57,7 +57,6 @@ class Window(pyglet.window.Window):
             if current_line == "move t1 right":
                 triangle = self.shapes.get("triangle", None)
                 if triangle:
-                    # TODO aqui você troca o estado do  animator do shape para "MOVING" pois essa função deve retornar antes de on_draw ser chamado
                     triangle.move_right(duration=1)
                     
                     if triangle.animation:

@@ -105,8 +105,11 @@ class Window(pyglet.window.Window):
         glClearColor(0.5, 0.5, 0.5, 1.0)
 
         self.shapes = {}
-        self.file_reader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/tool/commands.txt")
+        self.file_reader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/commands.txt")
         # self.file_reader = FileReader("/home/gabriel/Documents/OrCS-visual/tool/commands.txt")
+
+    def run(self):
+        pyglet.app.run()
 
     def on_draw(self):
         self.clear()
@@ -154,4 +157,4 @@ if __name__ == "__main__":
         "OrCS-visual", 
         resizable=True
     )
-    pyglet.app.run()
+    window.run()

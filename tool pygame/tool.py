@@ -80,13 +80,15 @@ class Triangle():
 
 class Window():
     def __init__(self, *args, **kwargs):
+        pygame.init()
+
         self.title = kwargs["title"]
         self.width, self.height = (kwargs["width"], kwargs["height"])
         self.background_color = (127,127,127)
         self.running = False
 
         self.shapes = {}
-        self.file_reader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/tool/commands.txt")
+        self.file_reader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/commands.txt")
         # self.file_reader = FileReader("/home/gabriel/Documents/OrCS-visual/tool/commands.txt")
 
 
@@ -152,8 +154,6 @@ class Window():
         self.running = False
 
 if __name__ == "__main__":
-    pygame.init()
-
     window = Window(
         width=640,
         height=360, 

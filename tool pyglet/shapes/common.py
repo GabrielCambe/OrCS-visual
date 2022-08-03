@@ -26,7 +26,6 @@ class AnimationControler():
                 self.sleep()
                 callback()
 
-# TODO: deixar representação das formas separadas dos objetos necessários para sua renderização
 class Triangle():
     def __init__(self):
         # anti-clockwise beginning on lower-left side

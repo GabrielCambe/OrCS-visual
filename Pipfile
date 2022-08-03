@@ -8,6 +8,8 @@ verify_ssl = true
 [packages]
 pyglet = "*"
 pygame = "*"
+tk = "*"
+pyqt5 = "*"
 
 [requires]
 python_version = "3.8"
