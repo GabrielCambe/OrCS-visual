@@ -1,5 +1,8 @@
 {
-    "files.associations": {
-        "string": "cpp"
-    }
+  "files.associations": {
+    "string": "cpp"
+  },
+  "atlascode.jira.startWorkBranchTemplate.customPrefixes": ["Pre-01-template"],
+  "atlascode.jira.statusbar.enabled": true,
+  "atlascode.jira.statusbar.showProduct": true
 }

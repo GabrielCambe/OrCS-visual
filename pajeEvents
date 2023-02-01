@@ -1,0 +1,16 @@
+Instrução x entrou no fetch
+
+%EventDef FetchEnter 0
+%   Instruction string
+%   Timestamp date
+%EndEventDef
+
+Instrução x saiu do fetch depois de y milisegundos
+
+%EventDef FetchLeave 1
+%   Instruction string
+%   Timestamp date
+%EndEventDef
+
+Container Fetch Buffer
+

@@ -14,31 +14,46 @@ class BufferObject(QtWidgets.QGraphicsObject):
         ])
         self.setPos(posx, posy)
 
-        self.newPackagePos = self.getNewPackagePos()            
-        self.packages = [ self.newPackage() for i in range(4) ]
+        # self.newPackagePos = self.getNewPackagePos()            
+        # self.packages = [ self.newPackage() for i in range(4) ]
+        self.packages = []
+        for i in range(4):
+            self.packages.append(self.newPackage())
 
         self.penWidth = 2.0
         self.color = QtCore.Qt.blue
 
-    def getNewPackagePos(self, bufferPos={}):
-        i = 0
-        while True:
-            yield { 'posx': 10.0, 'posy': 10.0 + (30 * i) }
-            i = i + 1
-
     # def getNewPackagePos(self, bufferPos={}):
+    #     i = 0
     #     while True:
     #         yield { 'posx': 10.0, 'posy': 10.0 + (30 * i) }
     #         i = i + 1
 
+    def getNewPackagePos(self):
+        i = 0
+        while True:
+            posy = 10.0 + (30 * i)
+
+            if len(self.packages) == 0:
+                return { 'posx': 10.0, 'posy': posy }
+
+            for package in self.packages:
+                if package.posy != posy:
+                    print(package.posy, posy)
+                    return { 'posx': 10.0, 'posy': posy }
+
+            i = i + 1
+
     def newPackage(self):
-        return Package.PackageObject(parent=self, **next(self.newPackagePos))
+        # return Package.PackageObject(parent=self, **next(self.newPackagePos))
+        return Package.PackageObject(parent=self, **self.getNewPackagePos())
 
     def mousePressEvent(self, event):
         self.color = QtCore.Qt.white
 
         scene = self.scene()
-        newPos = next(self.newPackagePos)
+        # newPos = next(self.newPackagePos)
+        newPos = self.getNewPackagePos()
         bufferPos = QtCore.QPointF(
             newPos['posx'],
             newPos['posy'],
