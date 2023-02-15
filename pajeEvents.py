@@ -5,9 +5,16 @@ import string
 
 import random
 
+def ordered_string_generator(n=0):
+    yield str(n)
+    number = n + 1
+    yield from ordered_string_generator(number)
+
+# gerar um id numero em ordem
 def random_string_generator(str_size=1):
-    # allowed_chars = string.ascii_letters + string.punctuation
-    allowed_chars = string.ascii_letters
+    # # allowed_chars = string.ascii_letters + string.punctuation
+    # allowed_chars = string.ascii_letters
+    # return ''.join(random.choice(allowed_chars) for x in range(str_size))
     return ''.join(random.choice(allowed_chars) for x in range(str_size))
 
 if __name__ == "__main__":
@@ -39,6 +46,8 @@ if __name__ == "__main__":
                 "in_cycle": current_cycle,
                 "out_cycle": current_cycle + random.randint(MIN_INST_LATENCY, MAX_INST_LATENCY),
             })
+
+            # printEvent(FETCH_IN, fetched_instruction, )
             print(
                 "IN:",
                 fetched_instruction["instruction_id"],
