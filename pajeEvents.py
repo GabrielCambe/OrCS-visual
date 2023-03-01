@@ -70,16 +70,16 @@ def default_paje_events():
         ('Name','string')
     )
 
-PajeCreateContainer
-Time date Time of creation of container
-Name string or integer Name of new container
-Type string or integer Container type of new container
-Container string or integer Parent of new container
+# PajeCreateContainer
+# Time date Time of creation of container
+# Name string or integer Name of new container
+# Type string or integer Container type of new container
+# Container string or integer Parent of new container
 
-PajeDestroyContainer
-Time date Time of destruction of container
-Name string or integer Name of container
-Type string or integer Type of container
+# PajeDestroyContainer
+# Time date Time of destruction of container
+# Name string or integer Name of container
+# Type string or integer Type of container
 
     # Defining PajeDefineEventType to define the FetchIn and FetchOut events
     printEvent(
@@ -88,11 +88,11 @@ Type string or integer Type of container
         ('Name','string')
     )
 
-PajeNewEvent
-Time date Time the event happened
-Type string or integer Type of event
-Container string or integer Container that produced event
-Value string or integer Value of new event
+# PajeNewEvent
+# Time date Time the event happened
+# Type string or integer Type of event
+# Container string or integer Container that produced event
+# Value string or integer Value of new event
 
 # The definition of events contains the name of each event type and the names and types of each field. 
 def event_definition(args):
