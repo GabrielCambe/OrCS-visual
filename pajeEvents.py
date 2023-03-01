@@ -3,12 +3,12 @@ import argparse
 import random
 import string
 
-import random
 
 def ordered_string_generator(n=0):
     yield "inst_%d" % n
     number = n + 1
     yield from ordered_string_generator(number)
+
 
 # gerar um id numero em ordem
 def random_string_generator(str_size=1):
@@ -16,8 +16,16 @@ def random_string_generator(str_size=1):
     allowed_chars = string.ascii_letters
     return ''.join(random.choice(allowed_chars) for x in range(str_size))
 
+
 FETCH_IN = 0
 FETCH_OUT = 1
+
+def id_generator(n=0):
+    yield n
+    number = n + 1
+    yield from id_generator(number)
+
+eventIdGenerator = id_generator()
 
 def printEvent(eventId, instruction, cycle):
     if eventId == FETCH_IN:
@@ -37,41 +45,72 @@ def printEvent(eventId, instruction, cycle):
         )
 
 
+# class PageEvent():
+def printField(field_name, field_type):
+    print("%% %s %s" % (field_name, field_type))
+
+
+def printEvent(name, *fields, **kwargs):
+    id = kwargs.get('id', next(eventIdGenerator))
+
+    print("%%EventDef %s %d" % (name, id))
+
+    for field_name, field_type in fields:
+        printField(field_name, field_type)
+    
+    print("%EndEventDef")
+
+
+def default_paje_events():
+    # Defining PajeDefineContainerType to Define the FetchBuffer Container
+    printEvent(
+        'PajeDefineContainerType',
+        ('Alias','string'),
+        ('Type','string'),
+        ('Name','string')
+    )
+
+PajeCreateContainer
+Time date Time of creation of container
+Name string or integer Name of new container
+Type string or integer Container type of new container
+Container string or integer Parent of new container
+
+PajeDestroyContainer
+Time date Time of destruction of container
+Name string or integer Name of container
+Type string or integer Type of container
+
+    # Defining PajeDefineEventType to define the FetchIn and FetchOut events
+    printEvent(
+        'PajeDefineEventType',
+        ('Type','string'),
+        ('Name','string')
+    )
+
+PajeNewEvent
+Time date Time the event happened
+Type string or integer Type of event
+Container string or integer Container that produced event
+Value string or integer Value of new event
+
 # The definition of events contains the name of each event type and the names and types of each field. 
-def event_definition():
-    print("%%EventDef PajeDefineContainerType 0")
-    print("%% Alias string")
-    print("%% Type string")
-    print("%% Name string")
-    print("%%EndEventDef")
+def event_definition(args):
+    default_paje_events()
 
-    # date: for fields that represent dates. It’s a double precision floating-point number, usually meaning
-    # seconds since program start
+    printEvent(
+        'FetchIn',
+        ('Cycle', 'int')
+    )
 
-    # int: for fields containing integer numeric values;
+    printEvent(
+        'FetchOut',     
+        ('Cycle', 'int')
+    )
 
-    # double: for fields containing floating-point values;
-
-    # hex: for fields that represent addresses, in hexadecimal;
-
-    # string: for strings of characters.
-
-    # color: for fields that represent colors. A color is a sequence of three floating-point numbers be-
-    # tween 0 and 1, inside double quotes ("). The three numbers are the values of red, green and
-    # blue components.
-
-
-    print("%%EventDef %s %d" % ("FetchIn", 0))
-    print("%% cycle int")
-    print("%%EndEventDef")
-
-    print("%%EventDef %s %d" % ("FetchOut", 1)
-    print("%% cycle int")
-    print("%%EndEventDef")
-
-
-def type_hierarchy():
+def type_hierarchy(args):
     # Use paje events to define type hierarchy
+    pass
 
 
 def recorded_events():
@@ -83,15 +122,6 @@ def recorded_events():
 
     # 21 3.233222 5 3 320
     # 17 5.123002 5 98 sync.c
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generates a sintetic PAJE trace file.')
-    parser.add_argument('-n', '--number', help='Number of instructions to be processed.', required=True, type=int)
-    parser.add_argument('-v', '--verbose', help='Level of verbose.', type=int, default=0)
-
-    args = parser.parse_args()
-
     current_cycle = 0
     fetch_buffer = []
     instruction_id = ordered_string_generator()
@@ -129,3 +159,15 @@ if __name__ == "__main__":
         fetch_buffer = [instruction for indx, instruction in enumerate(fetch_buffer) if indx not in insts_to_pop]
         
         current_cycle = current_cycle + 1
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Generates a sintetic PAJE trace file.')
+    parser.add_argument('-n', '--number', help='Number of instructions to be processed.', required=True, type=int)
+    parser.add_argument('-v', '--verbose', help='Level of verbose.', type=int, default=0)
+
+    args = parser.parse_args()
+
+    event_definition(args)
+    # type_hierarchy(args)
+    # recorded_events(args)
