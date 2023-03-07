@@ -79,9 +79,9 @@ def default_paje_events():
     # Defining PajeDefineContainerType to Define the FetchBuffer Container
     printEvent(
         'PajeDefineContainerType',
-        ('Alias','string'),
-        ('Type','string'),
-        ('Name','string')
+        # ('Alias','string'),
+        ('Name','string'),
+        ('Type','string')
     )
 
     printEvent(
@@ -132,6 +132,19 @@ def event_definition(args):
 
 def type_hierarchy(args):
     # Use paje events to define type hierarchy
+
+
+# ---------------------------------------
+# ---------- Defining Entities ----------
+# ---------------------------------------
+0 ROOT 0 "ROOT"
+0 NODE ROOT "NODE"
+0 VM NODE "VM"
+1 MEM VM "Memory" "0 0 0"
+1 CPU VM "CPU" "0 0 0"
+4 LINK 0 VM VM "LINK
+
+
     pass
 
 
