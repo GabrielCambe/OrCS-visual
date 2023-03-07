@@ -4,6 +4,20 @@ import random
 import string
 
 
+
+
+
+
+# create trace generator
+
+# create trace reader 
+
+
+
+
+
+
+
 def ordered_string_generator(n=0):
     yield "inst_%d" % n
     number = n + 1
@@ -70,16 +84,20 @@ def default_paje_events():
         ('Name','string')
     )
 
-# PajeCreateContainer
-# Time date Time of creation of container
-# Name string or integer Name of new container
-# Type string or integer Container type of new container
-# Container string or integer Parent of new container
+    printEvent(
+        'PajeCreateContainer',
+        ('Time','date'), # Time of creation of container
+        ('Name','string'), # Name of new container
+        ('Type','string'), #  Container type of new container
+        ('Container','string') #  Parent of new container
+    )
 
-# PajeDestroyContainer
-# Time date Time of destruction of container
-# Name string or integer Name of container
-# Type string or integer Type of container
+    printEvent(
+        'PajeDestroyContainer',
+        ('Time','date'), # Time of destruction of container
+        ('Name','string'), # Name of new container
+        ('Type','string'), #  Type of container
+    )
 
     # Defining PajeDefineEventType to define the FetchIn and FetchOut events
     printEvent(
@@ -88,11 +106,13 @@ def default_paje_events():
         ('Name','string')
     )
 
-# PajeNewEvent
-# Time date Time the event happened
-# Type string or integer Type of event
-# Container string or integer Container that produced event
-# Value string or integer Value of new event
+    printEvent(
+        'PajeNewEvent',
+        ('Time','date'), # Time the event happened
+        ('Type','string'), # Type of event
+        ('Container','string'), # Container that produced event
+        ('Value','string') # Value of new event
+    )
 
 # The definition of events contains the name of each event type and the names and types of each field. 
 def event_definition(args):
@@ -100,11 +120,13 @@ def event_definition(args):
 
     printEvent(
         'FetchIn',
+        ('Instruction','string'),
         ('Cycle', 'int')
     )
 
     printEvent(
         'FetchOut',     
+        ('Instruction','string'),
         ('Cycle', 'int')
     )
 
