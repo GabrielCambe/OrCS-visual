@@ -9,11 +9,13 @@ import string
 
 
 # create trace generator
+    # Create Page Event Class
+    # Create way to print event trace
+    # Define type hierarchy
+    # Define variable types
+    # Define which sequence of events would represente a instruction entering and leaving the fetch buffer (create and destroy "instruction" container types?)
 
 # create trace reader 
-
-
-
 
 
 
@@ -133,13 +135,12 @@ def event_definition(args):
 def type_hierarchy(args):
     # Use paje events to define type hierarchy
 
+    PajeDefineContainerType.print()
 
-# ---------------------------------------
-# ---------- Defining Entities ----------
-# ---------------------------------------
-0 ROOT 0 "ROOT"
-0 NODE ROOT "NODE"
-0 VM NODE "VM"
+0 0 "SCREEN"
+0 SCREEN "FETCH_BUFFER"
+0 FETCH_BUFFER "INSTRUCTION"
+
 1 MEM VM "Memory" "0 0 0"
 1 CPU VM "CPU" "0 0 0"
 4 LINK 0 VM VM "LINK
