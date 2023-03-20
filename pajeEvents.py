@@ -61,7 +61,6 @@ def printEvent(eventId, instruction, cycle):
         )
 
 
-# class PageEvent():
 def printField(field_name, field_type):
     print("%% %s %s" % (field_name, field_type))
 
@@ -76,80 +75,112 @@ def printEvent(name, *fields, **kwargs):
     
     print("%EndEventDef")
 
+class PajeEvent():
+    def __init__(self, name, *fields, **kwargs):
+        self.id = kwargs.get('id', next(eventIdGenerator))
+        self.name = name
+        self.fields = fields
 
-def default_paje_events():
-    # Defining PajeDefineContainerType to Define the FetchBuffer Container
-    printEvent(
-        'PajeDefineContainerType',
-        # ('Alias','string'),
-        ('Name','string'),
-        ('Type','string')
+    # The definition of events contains the name of each event type and the names and types of each field. 
+    def definition(self):
+        print("%%EventDef %s %d" % (self.name, self.id))
+
+        for field_name, field_type in self.fields:
+            printField(field_name, field_type)
+        
+        print("%EndEventDef")
+
+
+    def recordEvent(self):
+        print("%d \"%s\" %s" % (self.id, self.Name, str(self.Type)))    
+
+
+# Defining PajeDefineContainerType to Define the FetchBuffer Container
+PajeDefineContainerType = PajeEvent(
+    'PajeDefineContainerType',
+    ('Name','string'), # Name of new container type
+    ('Type','string') # Parent container type
+)
+
+PajeCreateContainer = PajeEvent(
+    'PajeCreateContainer',
+    ('Time','date'), # Time of creation of container
+    ('Name','string'), # Name of new container
+    ('Type','string'), #  Container type of new container
+    ('Container','string') #  Parent of new container
+)
+
+PajeDestroyContainer = PajeEvent(
+    'PajeDestroyContainer',
+    ('Time','date'), # Time of destruction of container
+    ('Name','string'), # Name of new container
+    ('Type','string'), #  Type of container
+)
+
+# Defining PajeDefineEventType to define the FetchIn and FetchOut events
+PajeDefineEventType = PajeEvent(
+    'PajeDefineEventType',
+    ('Type','string'),
+    ('Name','string')
+)
+
+PajeNewEvent = PajeEvent(
+    'PajeNewEvent',
+    ('Time','date'), # Time the event happened
+    ('Type','string'), # Type of event
+    ('Container','string'), # Container that produced event
+    ('Value','string') # Value of new event
+)
+
+def print_default_paje_events_definitions():
+    PajeDefineContainerType.definition()
+    PajeCreateContainer.definition()
+    PajeDestroyContainer.definition()
+    PajeDefineEventType.definition()
+    PajeNewEvent.definition()
+
+FetchIn = PajeEvent(
+    'FetchIn',
+    ('Instruction','string'),
+    ('Cycle', 'int')
+)
+
+FetchOut = PajeEvent(
+    'FetchOut',     
+    ('Instruction','string'),
+    ('Cycle', 'int')
+)
+def print_event_definitions(args):
+    print_default_paje_events_definitions()
+    
+    FetchIn.definition()
+    FetchOut.definition()
+
+# Use paje events to define type hierarchy
+def print_type_hierarchy(args):
+
+    PajeDefineContainerType.recordEvent(
+        Name="SCREEN",
+        Type=0
     )
 
-    printEvent(
-        'PajeCreateContainer',
-        ('Time','date'), # Time of creation of container
-        ('Name','string'), # Name of new container
-        ('Type','string'), #  Container type of new container
-        ('Container','string') #  Parent of new container
+    PajeDefineContainerType.recordEvent(
+        Name="FETCH_BUFFER",
+        Type="SCREEN"
     )
 
-    printEvent(
-        'PajeDestroyContainer',
-        ('Time','date'), # Time of destruction of container
-        ('Name','string'), # Name of new container
-        ('Type','string'), #  Type of container
+    PajeDefineContainerType.recordEvent(
+        Name="INSTRUCTION",
+        Type="FETCH_BUFFER"
     )
 
-    # Defining PajeDefineEventType to define the FetchIn and FetchOut events
-    printEvent(
-        'PajeDefineEventType',
-        ('Type','string'),
-        ('Name','string')
-    )
-
-    printEvent(
-        'PajeNewEvent',
-        ('Time','date'), # Time the event happened
-        ('Type','string'), # Type of event
-        ('Container','string'), # Container that produced event
-        ('Value','string') # Value of new event
-    )
-
-# The definition of events contains the name of each event type and the names and types of each field. 
-def event_definition(args):
-    default_paje_events()
-
-    printEvent(
-        'FetchIn',
-        ('Instruction','string'),
-        ('Cycle', 'int')
-    )
-
-    printEvent(
-        'FetchOut',     
-        ('Instruction','string'),
-        ('Cycle', 'int')
-    )
-
-def type_hierarchy(args):
-    # Use paje events to define type hierarchy
-
-    PajeDefineContainerType.print()
-
-0 0 "SCREEN"
-0 SCREEN "FETCH_BUFFER"
-0 FETCH_BUFFER "INSTRUCTION"
-
-1 MEM VM "Memory" "0 0 0"
-1 CPU VM "CPU" "0 0 0"
-4 LINK 0 VM VM "LINK
+# 1 MEM VM "Memory" "0 0 0"
+# 1 CPU VM "CPU" "0 0 0"
+# 4 LINK 0 VM VM "LINK
 
 
-    pass
 
-
-def recorded_events():
+def print_recorded_events():
     # The second part of the trace file contains one event per line, whose fields are separated by spaces
     # or tabs, the first field being the number that identifies the event type, followed by the other fields,
     # in the same order that they appear in the definition of the event. Fields of type string must be inside
@@ -204,6 +235,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    event_definition(args)
-    # type_hierarchy(args)
-    # recorded_events(args)
+    print_event_definitions(args)
+    print_type_hierarchy(args)
+    # print_recorded_events(args)
