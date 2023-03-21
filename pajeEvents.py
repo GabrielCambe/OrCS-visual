@@ -79,20 +79,33 @@ class PajeEvent():
     def __init__(self, name, *fields, **kwargs):
         self.id = kwargs.get('id', next(eventIdGenerator))
         self.name = name
-        self.fields = fields
+        self.fields = dict(fields)
+
 
     # The definition of events contains the name of each event type and the names and types of each field. 
     def definition(self):
         print("%%EventDef %s %d" % (self.name, self.id))
 
-        for field_name, field_type in self.fields:
+        for field_name, field_type in self.fields.items():
             printField(field_name, field_type)
         
         print("%EndEventDef")
 
 
-    def recordEvent(self):
-        print("%d \"%s\" %s" % (self.id, self.Name, str(self.Type)))    
+    def recordEvent(self, **kwargs):
+        kwargsKeys = [key for key in kwargs]
+        fieldKeys = [key for key in self.fields]
+        if len(kwargsKeys) == len(fieldKeys):
+            print("%d" % self.id, end='')    
+            for kwargKey, fieldKey in zip(kwargsKeys, fieldKeys):
+                if kwargKey == fieldKey:
+                    print(" ", end='')    
+                    if self.fields.get(fieldKey, None) == "string":
+                        format = "\"%s\""
+                    else:
+                        format = "%s"
+                    print(format % kwargs.get(kwargKey, None), end='')
+            print()
 
 
 # Defining PajeDefineContainerType to Define the FetchBuffer Container
@@ -120,8 +133,8 @@ PajeDestroyContainer = PajeEvent(
 # Defining PajeDefineEventType to define the FetchIn and FetchOut events
 PajeDefineEventType = PajeEvent(
     'PajeDefineEventType',
-    ('Type','string'),
-    ('Name','string')
+    ('Name','string'),
+    ('Type','string')
 )
 
 PajeNewEvent = PajeEvent(
@@ -135,9 +148,9 @@ PajeNewEvent = PajeEvent(
 def print_default_paje_events_definitions():
     PajeDefineContainerType.definition()
     PajeCreateContainer.definition()
-    PajeDestroyContainer.definition()
+    # PajeDestroyContainer.definition()
     PajeDefineEventType.definition()
-    PajeNewEvent.definition()
+    # PajeNewEvent.definition()
 
 FetchIn = PajeEvent(
     'FetchIn',
@@ -161,7 +174,7 @@ def print_type_hierarchy(args):
 
     PajeDefineContainerType.recordEvent(
         Name="SCREEN",
-        Type=0
+        Type="0"
     )
 
     PajeDefineContainerType.recordEvent(
@@ -169,26 +182,35 @@ def print_type_hierarchy(args):
         Type="SCREEN"
     )
 
-    PajeDefineContainerType.recordEvent(
-        Name="INSTRUCTION",
+    PajeDefineEventType.recordEvent(
+        Name="FetchIn",
         Type="FETCH_BUFFER"
     )
 
-# 1 MEM VM "Memory" "0 0 0"
-# 1 CPU VM "CPU" "0 0 0"
-# 4 LINK 0 VM VM "LINK
+    PajeDefineEventType.recordEvent(
+        Name="FetchOut",
+        Type="FETCH_BUFFER"
+    )
 
 
 
 def print_recorded_events():
-    # The second part of the trace file contains one event per line, whose fields are separated by spaces
-    # or tabs, the first field being the number that identifies the event type, followed by the other fields,
-    # in the same order that they appear in the definition of the event. Fields of type string must be inside
-    # double quotes (") if they contain space or tab characters, or if they are empty.
-    # For example, the two events of figure 1 are shown below:
+    PajeCreateContainer.recordEvent(
+        Time="0.0", # Time of creation of container
+        Name="Simulador",  # Name of new container
+        Type="SCREEN", #  Container type of new container
+        Container="0"  #  Parent of new container
+    )
 
-    # 21 3.233222 5 3 320
-    # 17 5.123002 5 98 sync.c
+    PajeCreateContainer.recordEvent(
+        Time="0.0", # Time of creation of container
+        Name="Fetch Buffer",  # Name of new container
+        Type="FETCH_BUFFER", #  Container type of new container
+        Container="Simulador"  #  Parent of new container
+    )
+
+
+#####################   
     current_cycle = 0
     fetch_buffer = []
     instruction_id = ordered_string_generator()
