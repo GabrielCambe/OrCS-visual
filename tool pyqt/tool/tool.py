@@ -1,47 +1,103 @@
 import sys
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtWidgets
 
-import Buffer
+from Window import WindoWidget
+
 
 #TODO: pesquisar artgos sobre visualização de arquiteturas em software
 #TODO: iniciar rascunho do TCC no sharelatex, utilizando os picotes que você já escreveu
 
-class WindowWidget(QtWidgets.QMainWindow):
-    def __init__(self, title, *args, **kwargs):
-        super().__init__(*args,**kwargs)        
+class FileReader():
+    @staticmethod
+    def lineGenerator(fileReader):
+        line = fileReader.get_line() 
+        yield line
+        if line == None:
+            return
+        else:
+            yield from FileReader.lineGenerator(fileReader)
 
-        self.setWindowTitle(title)
-        self.setGeometry(QtGui.QGuiApplication.primaryScreen().availableGeometry())
 
-        self.scene = QtWidgets.QGraphicsScene(
-            self.geometry().x(),
-            self.geometry().y(),
-            self.geometry().width() * 0.7,
-            self.geometry().height() * 0.7
-        )
-        self.scene.setBackgroundBrush(QtGui.QBrush(QtCore.Qt.gray, QtCore.Qt.SolidPattern))
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.current_line = ''
+        self.open_file()
+        self.lines = FileReader.lineGenerator(self)
 
-        self.buffers = [ Buffer.BufferObject(posx=10.0 + (210 * i), posy=10.0) for i in range(2) ]
-        for buffer in self.buffers:
-            self.scene.addItem(buffer)
+    def open_file(self):
+        self.file = open(self.file_path, 'r')
 
-        self.packages_to_send = []
+    def get_line(self):
+        self.current_line = self.file.readline()
+        if self.current_line == '':
+            return None
+        else:
+            return self.current_line
 
-        self.view = QtWidgets.QGraphicsView(self.scene)
-        self.view.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-        self.setCentralWidget(self.view)
+    def close_file(self):
+        self.file.close()
 
-        self.grabKeyboard()
 
-    def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key_Right:
-            print("Right")
-        elif event.key() == QtCore.Qt.Key_Escape:
-            self.close()
+class PajeParser():
+    @staticmethod
+    def definitionGenerator(definitions):
+        if len(definitions) == 0:
+            return
+        result = [definitions.pop(0)]
+        while result[-1] != "%EndEventDef\n":
+            result.append(definitions.pop(0))
+        yield result
+        if len(result) == 0:
+            return
+        else:
+            yield from PajeParser.definitionGenerator(definitions)
+
+    @staticmethod
+    def eventGenerator(events):
+        if len(events) == 0:
+            return
+        yield events.pop(0)
+        yield from PajeParser.definitionGenerator(events)
+
+
+    def __init__(self, fileReader) -> None:
+        self.fileReader = fileReader
+        self.definitions = []
+        self.events = []
+        self.current_line = None
+        self.parseDefinitions()
+    
+    def _getDefinitons(self):
+        result = []
+        for line in self.fileReader.lines:
+            self.current_line = line
+            if line.startswith("%"):
+                result.append(line)
+            else:
+                break
+        self.definitions = PajeParser.definitionGenerator(result)
+
+    def getEvent(self):
+        result = self.current_line
+        for line in self.fileReader.lines:
+            self.current_line = line
+            break
+        return result
+
+    def parseDefinitions(self):
+        self._getDefinitons()
+        for definition in self.definitions:
+            pass
+            # print(definition)
+        # for events in self.file
+
 
 
 if __name__ == "__main__":
+    fileReader = FileReader("/home/gabriel/Documents/OrCS-visual/pajeEvents")
+    parser = PajeParser(fileReader)
+
     app = QtWidgets.QApplication(sys.argv)
-    window = WindowWidget(title='OrCS-visual')
+    window = WindoWidget(title='OrCS-visual', parser=parser)
     window.showMaximized()
     sys.exit(app.exec_())

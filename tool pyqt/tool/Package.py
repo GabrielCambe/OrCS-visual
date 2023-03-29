@@ -2,8 +2,9 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 
 
 class PackageObject(QtWidgets.QGraphicsObject):
-    def __init__(self, parent, posx, posy, *args, **kwargs):
+    def __init__(self, text, parent, posx, posy, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.text = text
         self.polygon = QtGui.QPolygonF([
             QtCore.QPointF(0.0, 0.0),
             QtCore.QPointF(0.0, 20.0),
@@ -21,7 +22,7 @@ class PackageObject(QtWidgets.QGraphicsObject):
         self.textItem.setParentItem(self)
         self.textItem.setDefaultTextColor(QtCore.Qt.white)
         self.textItem.setTextWidth(self.boundingRect().width())
-        self.textItem.setHtml("<div style=\"text-align:center;\"> posy %s </div>" % posy)
+        self.textItem.setHtml("<div style=\"text-align:center;\"> %s </div>" % self.text)
 
         self.setAcceptHoverEvents(True)
 

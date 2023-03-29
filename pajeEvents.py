@@ -4,18 +4,34 @@ import random
 import string
 
 
+# Instrução x entrou no fetch
+
+# %EventDef FetchEnter 0
+# %   Instruction string
+# %   Timestamp date
+# %EndEventDef
+
+# Instrução x saiu do fetch depois de y milisegundos
+
+# %EventDef FetchLeave 1
+# %   Instruction string
+# %   Timestamp date
+# %EndEventDef
+
+# Container Fetch Buffer
 
 
 
 
-# create trace generator
-    # Create Page Event Class
-    # Create way to print event trace
-    # Define type hierarchy
-    # Define variable types
-    # Define which sequence of events would represente a instruction entering and leaving the fetch buffer (create and destroy "instruction" container types?)
 
-# create trace reader 
+#TODO: create trace generator
+    #TODO: Create Page Event Class
+    #TODO: Create way to print event trace
+    #TODO: Define type hierarchy
+    #TODO: Define variable types
+    #TODO: Define which sequence of events would represente a instruction entering and leaving the fetch buffer (create and destroy "instruction" container types?)
+
+#TODO: create trace reader 
 
 
 
@@ -25,8 +41,6 @@ def ordered_string_generator(n=0):
     number = n + 1
     yield from ordered_string_generator(number)
 
-
-# gerar um id numero em ordem
 def random_string_generator(str_size=1):
     # allowed_chars = string.ascii_letters + string.punctuation
     allowed_chars = string.ascii_letters
@@ -64,16 +78,6 @@ def printEvent(eventId, instruction, cycle):
 def printField(field_name, field_type):
     print("%% %s %s" % (field_name, field_type))
 
-
-def printEvent(name, *fields, **kwargs):
-    id = kwargs.get('id', next(eventIdGenerator))
-
-    print("%%EventDef %s %d" % (name, id))
-
-    for field_name, field_type in fields:
-        printField(field_name, field_type)
-    
-    print("%EndEventDef")
 
 class PajeEvent():
     def __init__(self, name, *fields, **kwargs):
@@ -194,17 +198,17 @@ def print_type_hierarchy(args):
 
 
 
-def print_recorded_events():
+def print_recorded_events(args):
     PajeCreateContainer.recordEvent(
         Time="0.0", # Time of creation of container
         Name="Simulador",  # Name of new container
-        Type="SCREEN", #  Container type of new container
+        Type="SCREEN", #  Container type of new instruction["instruction_id"],container
         Container="0"  #  Parent of new container
     )
 
     PajeCreateContainer.recordEvent(
         Time="0.0", # Time of creation of container
-        Name="Fetch Buffer",  # Name of new container
+        Name="Fetch_Buffer",  # Name of new container
         Type="FETCH_BUFFER", #  Container type of new container
         Container="Simulador"  #  Parent of new container
     )
@@ -235,14 +239,23 @@ def print_recorded_events():
                 "out_cycle": current_cycle + random.randint(MIN_INST_LATENCY, MAX_INST_LATENCY),
             })
 
-            printEvent(FETCH_IN, fetched_instruction, current_cycle)
+            # printEvent(FETCH_IN, fetched_instruction, current_cycle)
+            FetchIn.recordEvent(
+                Instruction=fetched_instruction.get("instruction_id", "UNKNOWN"),
+                Cycle=current_cycle             
+            )
+
             fetch_buffer.append(fetched_instruction)
             instructions_to_fetch = instructions_to_fetch - 1
 
         insts_to_pop = []
         for indx, instruction in enumerate(fetch_buffer):
             if current_cycle == instruction["out_cycle"]:
-                printEvent(FETCH_OUT, instruction, current_cycle)
+                # printEvent(FETCH_OUT, instruction, current_cycle)
+                FetchOut.recordEvent(
+                    Instruction=instruction.get("instruction_id", "UNKNOWN"),
+                    Cycle=current_cycle             
+                )
                 insts_to_pop.append(indx)
 
         fetch_buffer = [instruction for indx, instruction in enumerate(fetch_buffer) if indx not in insts_to_pop]
@@ -259,4 +272,6 @@ if __name__ == "__main__":
 
     print_event_definitions(args)
     print_type_hierarchy(args)
-    # print_recorded_events(args)
+    print_recorded_events(args)
+    ('Instruction','string'),
+    ('Cycle', 'int')

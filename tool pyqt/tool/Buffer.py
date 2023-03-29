@@ -8,51 +8,37 @@ class BufferObject(QtWidgets.QGraphicsObject):
         super().__init__(*args, **kwargs)
         self.polygon = QtGui.QPolygonF([
             QtCore.QPointF(0.0, 0.0),
-            QtCore.QPointF(0.0, 300.0),
-            QtCore.QPointF(200.0, 300.0),
+            QtCore.QPointF(0.0, 610.0),
+            QtCore.QPointF(200.0, 610.0),
             QtCore.QPointF(200.0, 0.0)
         ])
         self.setPos(posx, posy)
 
-        # self.newPackagePos = self.getNewPackagePos()            
-        # self.packages = [ self.newPackage() for i in range(4) ]
-        self.packages = []
-        for i in range(4):
-            self.packages.append(self.newPackage())
+        self.packages = {}
+        self.packageHistory = []
 
         self.penWidth = 2.0
         self.color = QtCore.Qt.blue
 
-    # def getNewPackagePos(self, bufferPos={}):
-    #     i = 0
-    #     while True:
-    #         yield { 'posx': 10.0, 'posy': 10.0 + (30 * i) }
-    #         i = i + 1
+    def addInstruction(self, text):
+        self.packages[text] = self.newPackage(text)
+        self.packageHistory.append(text)
+
+    def removeInstruction(self, text):
+        scene = self.scene()
+        scene.removeItem(self.packages[text])
+        del self.packages[text]
 
     def getNewPackagePos(self):
-        i = 0
-        while True:
-            posy = 10.0 + (30 * i)
+        return { 'posx': 10.0, 'posy': 10.0 + (30.0 * len(self.packageHistory)) }
 
-            if len(self.packages) == 0:
-                return { 'posx': 10.0, 'posy': posy }
-
-            for package in self.packages:
-                if package.posy != posy:
-                    print(package.posy, posy)
-                    return { 'posx': 10.0, 'posy': posy }
-
-            i = i + 1
-
-    def newPackage(self):
-        # return Package.PackageObject(parent=self, **next(self.newPackagePos))
-        return Package.PackageObject(parent=self, **self.getNewPackagePos())
+    def newPackage(self, text):
+        return Package.PackageObject(text=text, parent=self, **self.getNewPackagePos())
 
     def mousePressEvent(self, event):
         self.color = QtCore.Qt.white
 
         scene = self.scene()
-        # newPos = next(self.newPackagePos)
         newPos = self.getNewPackagePos()
         bufferPos = QtCore.QPointF(
             newPos['posx'],
@@ -64,7 +50,7 @@ class BufferObject(QtWidgets.QGraphicsObject):
             window = view.parent()
             for package in window.packages_to_send:
                 window.packages_to_send.remove(package)
-                self.packages.append(package)
+                self.packages["to_move"] = package
 
                 self.anim = QtCore.QPropertyAnimation(package, b"pos")
                 self.anim.setEndValue(scenePos)
@@ -72,7 +58,6 @@ class BufferObject(QtWidgets.QGraphicsObject):
                 self.anim.finished.connect(lambda : self.setPackagePos(bufferPos, package))
                 self.anim.start()
                 
-
         self.update()
 
     def setPackagePos(self, bufferPos, package):
@@ -90,7 +75,7 @@ class BufferObject(QtWidgets.QGraphicsObject):
             0.0 - self.penWidth / 2,
             0.0 - self.penWidth / 2,
             200.0 + self.penWidth,
-            300.0 + self.penWidth
+            610.0 + self.penWidth
         )
 
     def paint(self, painter, option, widget):

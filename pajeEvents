@@ -1,16 +1,68 @@
-Instrução x entrou no fetch
-
-%EventDef FetchEnter 0
-%   Instruction string
-%   Timestamp date
+%EventDef PajeDefineContainerType 0
+% Name string
+% Type string
 %EndEventDef
-
-Instrução x saiu do fetch depois de y milisegundos
-
-%EventDef FetchLeave 1
-%   Instruction string
-%   Timestamp date
+%EventDef PajeCreateContainer 1
+% Time date
+% Name string
+% Type string
+% Container string
 %EndEventDef
-
-Container Fetch Buffer
-
+%EventDef PajeDefineEventType 3
+% Name string
+% Type string
+%EndEventDef
+%EventDef FetchIn 5
+% Instruction string
+% Cycle int
+%EndEventDef
+%EventDef FetchOut 6
+% Instruction string
+% Cycle int
+%EndEventDef
+0 "SCREEN" "0"
+0 "FETCH_BUFFER" "SCREEN"
+3 "FetchIn" "FETCH_BUFFER"
+3 "FetchOut" "FETCH_BUFFER"
+1 0.0 "Simulador" "SCREEN" "0"
+1 0.0 "Fetch_Buffer" "FETCH_BUFFER" "Simulador"
+5 "inst_0" 0
+5 "inst_1" 1
+5 "inst_2" 2
+5 "inst_3" 3
+5 "inst_4" 4
+6 "inst_3" 4
+5 "inst_5" 5
+6 "inst_1" 5
+5 "inst_6" 6
+5 "inst_7" 7
+6 "inst_2" 7
+5 "inst_8" 8
+5 "inst_9" 9
+5 "inst_10" 10
+5 "inst_11" 11
+5 "inst_12" 12
+6 "inst_0" 12
+5 "inst_13" 13
+5 "inst_14" 14
+5 "inst_15" 15
+6 "inst_4" 15
+5 "inst_16" 16
+5 "inst_17" 17
+6 "inst_8" 17
+5 "inst_18" 18
+6 "inst_7" 18
+6 "inst_11" 18
+6 "inst_17" 18
+5 "inst_19" 19
+6 "inst_13" 19
+6 "inst_16" 21
+6 "inst_14" 26
+6 "inst_6" 27
+6 "inst_12" 28
+6 "inst_15" 28
+6 "inst_5" 33
+6 "inst_9" 33
+6 "inst_10" 34
+6 "inst_18" 39
+6 "inst_19" 44
