@@ -28,11 +28,25 @@ class WindoWidget(QtWidgets.QMainWindow):
 
         self.grabKeyboard()
 
-        self.cycle = -1
-        self.textItem = QtWidgets.QGraphicsTextItem()
-        self.textItem.setDefaultTextColor(QtCore.Qt.red)
-        self.textItem.setHtml("<div style=\"text-align:bottom;\"> %s </div>" % self.cycle)
-        self.scene.addItem(self.textItem)        
+        if self.parser.mode == 'CYCLE':
+            self.cycle = -1
+            self.textItem = QtWidgets.QGraphicsTextItem()
+            self.textItem.setPos(
+                self.geometry().width() * 0.9,
+                self.geometry().height() * 0.9
+            )
+            self.textItem.setDefaultTextColor(QtCore.Qt.red)
+            self.textItem.setHtml("<div style=\"text-align:bottom;\"> %s </div>" % self.cycle)
+            self.scene.addItem(self.textItem)        
+
+        self.textItem2 = QtWidgets.QGraphicsTextItem()
+        self.textItem2.setPos(
+            self.geometry().width() - 100,
+            self.geometry().height() * 0.9
+        )
+        self.textItem2.setDefaultTextColor(QtCore.Qt.red)
+        self.textItem2.setHtml("<div style=\"text-align:bottom;\"> %s </div>" % self.parser.mode)
+        self.scene.addItem(self.textItem2)        
 
 
 
@@ -43,26 +57,35 @@ class WindoWidget(QtWidgets.QMainWindow):
     
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Right:
-            pajeEvent = self.parser.getEvent()
-            if pajeEvent == None:
-                self.close()
-                return
+            if self.parser.mode == 'EVENT':
+                pajeEvent = self.parser.getEvent()
+                if pajeEvent == None:
+                    self.close()
+                    return
 
-            split = pajeEvent.split()
+                split = pajeEvent.split()
 
-            if split[0] == '0':
-                return
-            elif split[0] == '3':
-                return
-            elif split[0] == '1':
-                if split[2] == '"Fetch_Buffer"':
-                    self.addBuffer()
-            elif split[0] == '5':
-                self.buffers[0].addInstruction(split[1])
-            elif split[0] == '6':
-                self.buffers[0].removeInstruction(split[1])
+                if split[0] == '0':
+                    return
+                elif split[0] == '3':
+                    return
+                elif split[0] == '1':
+                    if split[2] == '"Fetch_Buffer"':
+                        self.addBuffer()
+                    elif split[2] == '"Decode_Buffer"':
+                        self.addBuffer()
 
-            print(split)
+                elif split[0] == '5':
+                    self.buffers[0].addInstruction(split[1])
+                elif split[0] == '6':
+                    self.buffers[0].removeInstruction(split[1])
+
+                print(split)
+            
+            elif self.parser.mode == 'CYCLE':
+                self.cycle = self.cycle + 1
+                self.textItem.setHtml("<div style=\"text-align:bottom;\"> %s </div>" % self.cycle)
+                pass
 
         elif event.key() == QtCore.Qt.Key_Escape:
             self.close()

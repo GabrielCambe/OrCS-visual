@@ -186,6 +186,11 @@ def print_type_hierarchy(args):
         Type="SCREEN"
     )
 
+    PajeDefineContainerType.recordEvent(
+        Name="DECODE_BUFFER",
+        Type="SCREEN"
+    )
+
     PajeDefineEventType.recordEvent(
         Name="FetchIn",
         Type="FETCH_BUFFER"
@@ -210,6 +215,13 @@ def print_recorded_events(args):
         Time="0.0", # Time of creation of container
         Name="Fetch_Buffer",  # Name of new container
         Type="FETCH_BUFFER", #  Container type of new container
+        Container="Simulador"  #  Parent of new container
+    )
+
+    PajeCreateContainer.recordEvent(
+        Time="0.0", # Time of creation of container
+        Name="Decode_Buffer",  # Name of new container
+        Type="DECODE_BUFFER", #  Container type of new container
         Container="Simulador"  #  Parent of new container
     )
 
@@ -239,7 +251,6 @@ def print_recorded_events(args):
                 "out_cycle": current_cycle + random.randint(MIN_INST_LATENCY, MAX_INST_LATENCY),
             })
 
-            # printEvent(FETCH_IN, fetched_instruction, current_cycle)
             FetchIn.recordEvent(
                 Instruction=fetched_instruction.get("instruction_id", "UNKNOWN"),
                 Cycle=current_cycle             
@@ -251,7 +262,6 @@ def print_recorded_events(args):
         insts_to_pop = []
         for indx, instruction in enumerate(fetch_buffer):
             if current_cycle == instruction["out_cycle"]:
-                # printEvent(FETCH_OUT, instruction, current_cycle)
                 FetchOut.recordEvent(
                     Instruction=instruction.get("instruction_id", "UNKNOWN"),
                     Cycle=current_cycle             
