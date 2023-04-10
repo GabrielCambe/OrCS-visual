@@ -7,6 +7,9 @@ from Window import WindoWidget
 #TODO: pesquisar artgos sobre visualização de arquiteturas em software
 #TODO: iniciar rascunho do TCC no sharelatex, utilizando os picotes que você já escreveu
 
+
+#TODO: Adicionar lógica para deixar o visualizador mais repsonsivo e para criar overflow nos componentes
+
 class FileReader():
     @staticmethod
     def lineGenerator(fileReader):
@@ -96,8 +99,8 @@ class PajeParser():
 
 
 if __name__ == "__main__":
-    # fileReader = FileReader("/home/gabriel/Documents/OrCS-visual/pajeEvents")
-    fileReader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/pajeEvents")
+    fileReader = FileReader("/home/gabriel/Documents/OrCS-visual/pajeEvents")
+    # fileReader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/pajeEvents")
     parser = PajeParser(fileReader)
 
     app = QtWidgets.QApplication(sys.argv)

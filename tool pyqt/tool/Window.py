@@ -19,7 +19,8 @@ class WindoWidget(QtWidgets.QMainWindow):
         )
         self.scene.setBackgroundBrush(QtGui.QBrush(QtCore.Qt.gray, QtCore.Qt.SolidPattern))
 
-        self.buffers = []
+        # self.buffers = []
+        self.buffers = {}
         self.packages_to_send = []
 
         self.view = QtWidgets.QGraphicsView(self.scene)
@@ -50,35 +51,37 @@ class WindoWidget(QtWidgets.QMainWindow):
 
 
 
-    def addBuffer(self):
+    def addBuffer(self, key):
         buffer = Buffer.BufferObject(posx=10.0 + (210 * len(self.buffers)+1), posy=10.0)
-        self.buffers.append(buffer)
+        # self.buffers.append(buffer)
+        self.buffers[key] = buffer
         self.scene.addItem(buffer)        
     
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Right:
+            pajeEvent = self.parser.getEvent()
+            if pajeEvent == None:
+                self.close()
+                return
+            
+            split = pajeEvent.split()
+            
             if self.parser.mode == 'EVENT':
-                pajeEvent = self.parser.getEvent()
-                if pajeEvent == None:
-                    self.close()
-                    return
-
-                split = pajeEvent.split()
-
                 if split[0] == '0':
                     return
                 elif split[0] == '3':
                     return
                 elif split[0] == '1':
                     if split[2] == '"Fetch_Buffer"':
-                        self.addBuffer()
+                        self.addBuffer("FETCH")
                     elif split[2] == '"Decode_Buffer"':
-                        self.addBuffer()
+                        self.addBuffer("DECODE")
 
                 elif split[0] == '5':
-                    self.buffers[0].addInstruction(split[1])
+                    self.buffers["FETCH"].addInstruction(split[1])
                 elif split[0] == '6':
-                    self.buffers[0].removeInstruction(split[1])
+                    self.buffers["FETCH"].removeInstruction(split[1])
+                    self.buffers["DECODE"].addInstruction(split[1])
 
                 print(split)
             
