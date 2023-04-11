@@ -28,21 +28,21 @@ class PackageObject(QtWidgets.QGraphicsObject):
 
     def mousePressEvent(self, event):
         self.color = QtCore.Qt.white
-        self.setPos(self.posx, self.posy)
+        # self.setPos(self.posx, self.posy)
 
-        scene = self.scene()
-        buffer = self.parentItem()
-        scenePos = buffer.mapToScene(self.pos())
+        # scene = self.scene()
+        # buffer = self.parentItem()
+        # scenePos = buffer.mapToScene(self.pos())
 
-        for view in scene.views():
-            window = view.parent()
-            window.packages_to_send.append(self) # Add package to window
-            buffer.packages.remove(self) # Remove package from buffer object
+        # for view in scene.views():
+        #     window = view.parent()
+        #     window.packages_to_send.append(self) # Add package to window
+        #     buffer.packages.remove(self) # Remove package from buffer object
 
-            self.setParentItem(None)
-            self.setPos(scenePos)
-            self.posx = self.pos().x()
-            self.posy = self.pos().y()
+        #     self.setParentItem(None)
+        #     self.setPos(scenePos)
+        #     self.posx = self.pos().x()
+        #     self.posy = self.pos().y()
 
         self.update()
 

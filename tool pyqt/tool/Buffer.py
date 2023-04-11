@@ -29,8 +29,47 @@ class BufferObject(QtWidgets.QGraphicsObject):
         scene.removeItem(self.packages[text])
         del self.packages[text]
 
+    def moveInstruction(self, text, destBufferKey):
+        package = self.packages[text]
+        scenePos = self.mapToScene(package.pos())
+
+        package.setParentItem(None)
+        package.setPos(scenePos)
+        package.posx = package.pos().x()
+        package.posy = package.pos().y()
+
+        print("startPos: ", scenePos)
+
+        scene = package.scene()
+
+        for view in scene.views():
+            window = view.parent()
+            destBuffer = window.buffers[destBufferKey]
+
+            newPos = destBuffer.getNewPackagePos()
+            destBufferPos = QtCore.QPointF(
+                newPos['posx'],
+                newPos['posy'],
+            )
+            destBufferScenePos = destBuffer.mapToScene(destBufferPos)
+            print("endPos: ", destBufferScenePos)
+
+            destBuffer.packages[text] = package
+            destBuffer.packageHistory.append(text)
+            
+            self.anim = QtCore.QPropertyAnimation(package, b"pos")
+            self.anim.setEndValue(destBufferScenePos)
+            self.anim.setDuration(250)
+            self.anim.finished.connect(lambda : destBuffer.setPackagePos(destBufferPos, package))
+            self.anim.start()
+
+        del self.packages[text]
+        self.update()
+
+
     def getNewPackagePos(self):
         return { 'posx': 10.0, 'posy': 10.0 + (30.0 * len(self.packageHistory)) }
+        # return { 'posx': self.pos().x() + 5.0, 'posy': self.pos().y() + 5.0 + (30.0 * len(self.packageHistory)) }
 
     def newPackage(self, text):
         return Package.PackageObject(text=text, parent=self, **self.getNewPackagePos())
@@ -38,25 +77,25 @@ class BufferObject(QtWidgets.QGraphicsObject):
     def mousePressEvent(self, event):
         self.color = QtCore.Qt.white
 
-        scene = self.scene()
-        newPos = self.getNewPackagePos()
-        bufferPos = QtCore.QPointF(
-            newPos['posx'],
-            newPos['posy'],
-        )
-        scenePos = self.mapToScene(bufferPos)
+        # scene = self.scene()
+        # newPos = self.getNewPackagePos()
+        # bufferPos = QtCore.QPointF(
+        #     newPos['posx'],
+        #     newPos['posy'],
+        # )
+        # scenePos = self.mapToScene(bufferPos)
 
-        for view in scene.views():
-            window = view.parent()
-            for package in window.packages_to_send:
-                window.packages_to_send.remove(package)
-                self.packages["to_move"] = package
+        # for view in scene.views():
+        #     window = view.parent()
+        #     for package in window.packages_to_send:
+        #         window.packages_to_send.remove(package)
+        #         self.packages["to_move"] = package
 
-                self.anim = QtCore.QPropertyAnimation(package, b"pos")
-                self.anim.setEndValue(scenePos)
-                self.anim.setDuration(500)
-                self.anim.finished.connect(lambda : self.setPackagePos(bufferPos, package))
-                self.anim.start()
+        #         self.anim = QtCore.QPropertyAnimation(package, b"pos")
+        #         self.anim.setEndValue(scenePos)
+        #         self.anim.setDuration(500)
+        #         self.anim.finished.connect(lambda : self.setPackagePos(bufferPos, package))
+        #         self.anim.start()
                 
         self.update()
 

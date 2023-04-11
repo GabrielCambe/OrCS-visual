@@ -80,8 +80,9 @@ class WindoWidget(QtWidgets.QMainWindow):
                 elif split[0] == '5':
                     self.buffers["FETCH"].addInstruction(split[1])
                 elif split[0] == '6':
-                    self.buffers["FETCH"].removeInstruction(split[1])
-                    self.buffers["DECODE"].addInstruction(split[1])
+                    self.buffers["FETCH"].moveInstruction(split[1], "DECODE")
+                    # self.buffers["FETCH"].removeInstruction(split[1])
+                    # self.buffers["DECODE"].addInstruction(split[1])
 
                 print(split)
             

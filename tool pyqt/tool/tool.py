@@ -9,6 +9,7 @@ from Window import WindoWidget
 
 
 #TODO: Adicionar lógica para deixar o visualizador mais repsonsivo e para criar overflow nos componentes
+#TODO: Decobrir como interromper tratamento de eventos do mouse quando estiver executando uma animação
 
 class FileReader():
     @staticmethod
