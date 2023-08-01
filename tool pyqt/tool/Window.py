@@ -127,7 +127,11 @@ class WindoWidget(QtWidgets.QMainWindow):
             self.geometry().height()*1.4
         ))
 
+        self.buffersLayout = QtWidgets.QGraphicsGridLayout()
+        self.buffersLayout.setHorizontalSpacing(25.0)
+
         self.mainLayout = QtWidgets.QVBoxLayout()
+        self.mainLayout.addChildLayout(self.buffersLayout)
         self.mainLayout.addChildLayout(self.fastForwardBoxLayout)
         self.mainLayout.setGeometry(self.geometry())
         self.setLayout(self.mainLayout)
@@ -227,6 +231,75 @@ class WindoWidget(QtWidgets.QMainWindow):
         self.buffers[Name] = buffer
         # item = QtWidgets.QLayoutItem()
         # self.buffersLayout.addChildWidget(self.buffers[Name])
+        self.scene.addItem(buffer)
+
+    def addBuffer(self, Name, Type, buffer_colors):
+        buffer = None
+        index = (0, 0)
+        
+        if (
+            Type == FETCH_BUFFER
+            or Type == DECODE_BUFFER
+            or Type == URS
+            or Type == UFU
+        ):
+            buffer = Buffer.BufferObject(
+                Name,
+                Type,
+                posx=10.0 + (210.0 * float(len(self.buffers)) + 1.0),
+                posy=10.0,
+                orientation='vertical',
+                size='full',
+                buffer_colors=buffer_colors
+            )
+
+        elif (
+            Type == MOB_r
+        ):
+            self.halfBuffers = self.halfBuffers + 1
+            multiplier = float(self.halfBuffers % 2)
+
+            buffer = Buffer.BufferObject(
+                Name,
+                Type,
+                posx=10.0 + (210.0 * float(len(self.buffers)) + 1.0),
+                posy=10.0,
+                orientation='vertical',
+                size="half",
+                buffer_colors=buffer_colors
+            )
+
+        elif (
+            Type == MOB_w
+        ):
+            self.halfBuffers = self.halfBuffers + 1
+            multiplier = 1.0 + float(self.halfBuffers % 2)
+
+            buffer = Buffer.BufferObject(
+                Name,
+                Type,
+                posx=10.0 + (210.0 * float(len(self.buffers) - 1) + 1.0),
+                posy=10.0 + 15.0 + 230.0,
+                orientation='vertical',
+                size="half",
+                buffer_colors=buffer_colors
+            )
+
+        elif (
+            Type == ROB
+        ):
+            buffer = Buffer.BufferObject(
+                Name,
+                Type,
+                posx=10.0 + (210.0 * float(len(self.buffers) - 1) + 1.0),
+                posy=10.0,
+                orientation='vertical',
+                size="full",
+                buffer_colors=buffer_colors
+            )
+
+        self.buffers[Name] = buffer
+        self.buffersLayout.addItem(self.buffers[Name], *index)
         self.scene.addItem(buffer)
 
 
