@@ -1,22 +1,38 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 
+OperationPackage = '"OperationPackage"'
+UopPackage = '"UopPackage"'
 
-class PackageObject(QtWidgets.QGraphicsObject):
-    def __init__(self, text, parent, posx, posy, *args, **kwargs):
+PACKAGE_STATE_FREE = 'PACKAGE_STATE_FREE' 
+PACKAGE_STATE_WAIT = 'PACKAGE_STATE_WAIT'
+PACKAGE_STATE_READY = 'PACKAGE_STATE_READY'
+
+class PackageObject(QtWidgets.QGraphicsWidget):
+    def __init__(self, Id, Type, Content, posx, posy, status_colors, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.text = text
-        self.polygon = QtGui.QPolygonF([
-            QtCore.QPointF(0.0, 0.0),
-            QtCore.QPointF(0.0, 20.0),
-            QtCore.QPointF(80.0, 20.0),
-            QtCore.QPointF(80.0, 0.0)
-        ])
 
-        self.setParentItem(parent)
+        if Type == OperationPackage:
+            pass
+        elif Type == UopPackage:
+            pass
+
+        split = Content[1:-1].split(',')
+        Status = split[0]
+        Uop = split[1]
+        Operation = split[2]
+
+        self.text = "%s" % (Id[1:-1]) if Operation == 'null' else "%s - %s: %s" % (Operation, Id[1:-1], Uop)
+
         self.posx, self.posy = posx, posy
-        self.setPos(self.posx, self.posy)        
+        self.setGeometry(self.posx, self.posy, 180.0, 20.0)  
         self.penWidth = 1.0
-        self.color = QtCore.Qt.red
+
+        self.polygon = QtGui.QPolygonF(
+            self.geometry()
+        )
+
+        self.status_colors = status_colors
+        self.color = self.status_colors[Status]
 
         self.textItem = QtWidgets.QGraphicsTextItem()
         self.textItem.setParentItem(self)
@@ -25,6 +41,16 @@ class PackageObject(QtWidgets.QGraphicsObject):
         self.textItem.setHtml("<div style=\"text-align:center;\"> %s </div>" % self.text)
 
         self.setAcceptHoverEvents(True)
+
+    def updateContent(self, Content):
+        split = Content[1:-1].split(',')
+        Status = split[0]
+        Uop = split[1]
+        Operation = split[2]
+
+        self.color = self.status_colors[Status]
+
+        self.update()
 
     def mousePressEvent(self, event):
         self.color = QtCore.Qt.white
@@ -77,7 +103,7 @@ class PackageObject(QtWidgets.QGraphicsObject):
         return QtCore.QRectF(
             0.0 - self.penWidth / 2,
             0.0 - self.penWidth / 2,
-            80.0 + self.penWidth,
+            180.0 + self.penWidth,
             20.0 + self.penWidth
         )
 

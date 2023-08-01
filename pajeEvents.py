@@ -37,7 +37,9 @@ import string
 
 
 def ordered_string_generator(n=0):
-    yield "inst_%d" % n
+    # yield "inst_%d" % n
+    yield hex(n)
+    # yield f"0x{n:02x}"
     number = n + 1
     yield from ordered_string_generator(number)
 
@@ -156,22 +158,47 @@ def print_default_paje_events_definitions():
     PajeDefineEventType.definition()
     # PajeNewEvent.definition()
 
-FetchIn = PajeEvent(
-    'FetchIn',
-    ('Instruction','string'),
+InsertPackage = PajeEvent(
+    'InsertPackage',
+    ('Buffer', 'string')
+    ('Operation','string'),
     ('Cycle', 'int')
 )
+
+# FetchIn = PajeEvent(
+#     'FetchIn',
+#     ('Instruction','string'),
+#     ('Cycle', 'int')
+# )
 
 FetchOut = PajeEvent(
     'FetchOut',     
     ('Instruction','string'),
     ('Cycle', 'int')
 )
+
+DecodeIn = PajeEvent(
+    'DecodeIn',     
+    ('Instruction','string'),
+    ('Uop','string'),
+    ('Cycle', 'int')
+)
+
+DecodeOut = PajeEvent(
+    'DecodeOut',     
+    ('Instruction','string'),
+    ('Uop','string'),
+    ('Cycle', 'int')
+)
+
 def print_event_definitions(args):
     print_default_paje_events_definitions()
     
-    FetchIn.definition()
+    InsertPackage.definition()
+    # FetchIn.definition()
     FetchOut.definition()
+    DecodeIn.definition()
+    DecodeOut.definition()
 
 # Use paje events to define type hierarchy
 def print_type_hierarchy(args):
@@ -191,10 +218,40 @@ def print_type_hierarchy(args):
         Type="SCREEN"
     )
 
-    PajeDefineEventType.recordEvent(
-        Name="FetchIn",
-        Type="FETCH_BUFFER"
+    PajeDefineContainerType.recordEvent(
+        Name="URS",
+        Type="SCREEN"
     )
+
+    PajeDefineContainerType.recordEvent(
+        Name="UFU",
+        Type="SCREEN"
+    )
+
+    PajeDefineContainerType.recordEvent(
+        Name="ROB",
+        Type="SCREEN"
+    )
+
+    PajeDefineContainerType.recordEvent(
+        Name="MOB_r",
+        Type="SCREEN"
+    )
+
+    PajeDefineContainerType.recordEvent(
+        Name="MOB_w",
+        Type="SCREEN"
+    )
+
+    PajeDefineEventType.recordEvent(
+        Name="InsertPackage",
+        Type="SCREEN"
+    )
+
+    # PajeDefineEventType.recordEvent(
+    #     Name="FetchIn",
+    #     Type="FETCH_BUFFER"
+    # )
 
     PajeDefineEventType.recordEvent(
         Name="FetchOut",
@@ -225,10 +282,49 @@ def print_recorded_events(args):
         Container="Simulador"  #  Parent of new container
     )
 
+    PajeCreateContainer.recordEvent(
+        Time="0.0", # Time of creation of container
+        Name="Unified_Reservation_Station",  # Name of new container
+        Type="URS", #  Container type of new container
+        Container="Simulador"  #  Parent of new container
+    )
+
+    PajeCreateContainer.recordEvent(
+        Time="0.0", # Time of creation of container
+        Name="Unified_Functional_Units",  # Name of new container
+        Type="UFU", #  Container type of new container
+        Container="Simulador"  #  Parent of new container
+    )
+
+    PajeCreateContainer.recordEvent(
+        Time="0.0", # Time of creation of container
+        Name="Memory_Order_Buffer_Read",  # Name of new container
+        Type="MOB_r", #  Container type of new container
+        Container="Simulador"  #  Parent of new container
+    )
+
+    PajeCreateContainer.recordEvent(
+        Time="0.0", # Time of creation of container
+        Name="Memory_Order_Buffer_Write",  # Name of new container
+        Type="MOB_w", #  Container type of new container
+        Container="Simulador"  #  Parent of new container
+    )
+
+    PajeCreateContainer.recordEvent(
+        Time="0.0", # Time of creation of container
+        Name="Reorder_Buffer",  # Name of new container
+        Type="ROB", #  Container type of new container
+        Container="Simulador"  #  Parent of new container
+    )
+
 
 #####################   
     current_cycle = 0
+    # BUFFERS
     fetch_buffer = []
+    decode_buffer = []
+
+
     instruction_id = ordered_string_generator()
     instructions_to_fetch = args.number
     instruction_template = {
@@ -239,7 +335,9 @@ def print_recorded_events(args):
     MIN_INST_LATENCY = 1
     MAX_INST_LATENCY = 30
 
-    while instructions_to_fetch > 0 or len(fetch_buffer) > 0:
+    uop_id = ordered_string_generator()
+
+    while instructions_to_fetch > 0 or len(fetch_buffer) > 0 or len(decode_buffer) > 0:
         if args.verbose > 0:
             print("---------- cycle:", current_cycle, "----------")
         
@@ -251,10 +349,15 @@ def print_recorded_events(args):
                 "out_cycle": current_cycle + random.randint(MIN_INST_LATENCY, MAX_INST_LATENCY),
             })
 
-            FetchIn.recordEvent(
+            InsertPackage.recordEvent(
+                Buffer='Fetch_Buffer',
                 Instruction=fetched_instruction.get("instruction_id", "UNKNOWN"),
                 Cycle=current_cycle             
             )
+            # FetchIn.recordEvent(
+            #     Instruction=fetched_instruction.get("instruction_id", "UNKNOWN"),
+            #     Cycle=current_cycle             
+            # )
 
             fetch_buffer.append(fetched_instruction)
             instructions_to_fetch = instructions_to_fetch - 1

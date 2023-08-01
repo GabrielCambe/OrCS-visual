@@ -65,8 +65,9 @@ class PajeParser():
 
 
     def __init__(self, fileReader) -> None:
-        self.mode = 'EVENT'
+        # self.mode = 'EVENT'
         # self.mode = 'CYCLE'
+        self.mode = None
         self.fileReader = fileReader
         self.definitions = []
         self.events = []
@@ -97,11 +98,14 @@ class PajeParser():
             # print(definition)
         # for events in self.file
 
-
+    def changeMode(self, mode):
+        self.mode = mode
 
 if __name__ == "__main__":
-    fileReader = FileReader("/home/gabriel/Documents/OrCS-visual/pajeEvents")
+    # fileReader = FileReader("/home/gabriel/Documents/OrCS-visual/pajeEvents")
     # fileReader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/pajeEvents")
+    fileReader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/pajeEventsSintetico")
+    # fileReader = FileReader("/home/gabriel/Documentos/HiPES/OrCS-visual/pajeEventsReal")
     parser = PajeParser(fileReader)
 
     app = QtWidgets.QApplication(sys.argv)
