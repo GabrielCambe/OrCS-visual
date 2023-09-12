@@ -34,7 +34,6 @@ class PajeParser():
             yield from PajeParser.definitionGenerator(definitions)
 
     def __init__(self, fileReader) -> None:
-        self.mode = None
         self.fileReader = fileReader
         self.definitions = []
         self.events = []
@@ -67,6 +66,3 @@ class PajeParser():
             pass
             # print(definition)
         # for events in self.file
-
-    def changeMode(self, mode):
-        self.mode = mode

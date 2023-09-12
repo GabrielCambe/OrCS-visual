@@ -38,15 +38,17 @@ buffer_colors = {}
 
 # TODO: Retomar planejamento do caderno
 
+# TODO: Usar strip("_\"") para remover trailing caracters em vez de [1:-1]
 
 
 # TODO: Checar se o traço do OrCS está gerando múltiplos opcodes para cada Operation
 #       checar se as instruções MOV estão sendo criadas uops (operation 3 e 5 do traço Real)
+# Desacoplar modo de execução das ações de avançar
+# TODO: Deixar os controles nos dock widgets mais legíveis
 # TODO: Adicionar ações
     # avancar 1
     # avancar até próximo clock
 # TODO: Adicionar informações extras na message box de conteudo dos pacotes (ver caderno)
-
 
 
 
@@ -85,7 +87,7 @@ class Visualizer(QtWidgets.QMainWindow):
         super().__init__(*args,**kwargs)
 
         self.parser = None
-        self.cycle = -1
+        self.cycle = -2
         self.jumpToCycle = -2
         self.text_widgets = {}
         self.buffers = {}
@@ -94,7 +96,10 @@ class Visualizer(QtWidgets.QMainWindow):
         self.selectors = {}
         self.search = None
         self.found = None
-
+        self.execution_mode = 'STEP'
+        self.advance_type = 'EVENT'
+        self.advance_increment = 1
+        self.advance_executed = 0
         
         # Timer to execute cycle advances
         self.timer = QtCore.QTimer(self)
@@ -114,30 +119,55 @@ class Visualizer(QtWidgets.QMainWindow):
         self.addText('cycle', "cycle:\t%s" % self.cycle, 70)
 
         # Add control input fields
-        self.addField(
-            "fastForward",
-            buttonText="Fast Forward",
-            inputType=QtWidgets.QLineEdit,
-            editingFinishedCallback=lambda: self.setFocus(EDITING_FINISHED),
-            buttonType=QtWidgets.QPushButton,
-            clickedCallback=lambda: self.fastForward("fastForward")
+        self.addRadioField(
+            "executionMode", "Modo de Execução",
+            [
+                {
+                    'value': 'CONTINUOUS',
+                    'display_name': 'Contínuo',
+                    'callback': lambda: self.changeExecutionMode('CONTINUOUS')
+                },
+                {
+                    'value': 'STEP',
+                    'display_name': 'Step',
+                    'callback': lambda: self.changeExecutionMode('STEP'),
+                    'default': True
+                }
+            ],
+            180, 40
         )
+        self.addDockSpacing()
+        
+        self.addField(
+            "advance", "Avançar (Seta Direita)",
+            250, 40
+        )
+        self.addDockSpacing()
 
-        self.addRadioField("changeMode")
-
-        self.addComplexField("advanceUntil")
+        self.addComplexField("advanceUntil", "Avançar até")
 
 
         # Trace menu and actions
         load_action = QtWidgets.QAction("Load", self)
         load_action.setShortcut("Ctrl+L")
         load_action.triggered.connect(self.loadTrace)
-        self.addAction(load_action)
+        # self.addAction(load_action)
+
+        advance_action = QtWidgets.QAction("Advance", self)
+        advance_action.setShortcut("Right")
+        advance_action.triggered.connect(self.advance)
+        # self.addAction(advance_action)
+
+        exit_action = QtWidgets.QAction("Exit", self)
+        exit_action.setShortcut("Esc")
+        exit_action.triggered.connect(self.close)
+        # self.addAction(exit_action)
 
         trace_menu = self.menuBar().addMenu("Trace")
         trace_menu.addAction(load_action)
+        trace_menu.addAction(advance_action)
+        trace_menu.addAction(exit_action)
 
-        
         # Buffer menu and actions
         cascade_action = QtWidgets.QAction("Cascade", self)
         cascade_action.setShortcut("C")
@@ -176,12 +206,24 @@ class Visualizer(QtWidgets.QMainWindow):
         if file_path:
             self.parser = Trace.PajeParser(Trace.FileReader(file_path))
             self.text_widgets['trace'].setText('trace:\t%s' % file_path)
-            self.buttons["changeMode:CYCLE"].setChecked(True)
 
         self.settings.endGroup()
 
         # Give the main window focus
         self.setFocus(PROGRAM_START)
+
+    def addDockSpacing(self):
+        dock_widget = QtWidgets.QDockWidget(self)
+        dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
+        # Create spacer widgets for adding spacing
+        spacer = QtWidgets.QWidget()
+        spacer.setFixedSize(100, 40)  # Adjust the size as needed
+        # Set the dock widget's content
+        dock_widget.setWidget(spacer)
+        # Create content widgets for the dock widgets
+        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock_widget)
+
+
 
     def loadTrace(self):
         options = QtWidgets.QFileDialog.Options()
@@ -200,22 +242,26 @@ class Visualizer(QtWidgets.QMainWindow):
 
         self.setFocus(LOADED_TRACE)
 
-    def changeParserMode(self, mode):
-        if self.parser != None:
-            self.parser.changeMode(mode)
-        
+    def changeExecutionMode(self, mode):
+        self.execution_mode = mode
         self.setFocus(CHANGED_MODE)
 
-    def fastForward(self, Name):
-        self.jumpToCycle = int(self.inputs[Name].text())
-        
-        if self.parser.mode == 'EVENT':
-            while self.processPajeEvent():
-                pass
-        elif self.parser.mode == 'CYCLE':
-            self.timer.start(125)
-
-        self.inputs[Name].setText('')
+    def advance(self):
+        if self.execution_mode == 'STEP':
+            if self.advance_type == 'EVENT':
+                for i in range(self.advance_increment):
+                    self.processPajeEvent()
+            elif self.advance_type == 'CYCLE':
+                self.jumpToCycle = self.cycle + self.advance_increment                
+                while self.cycle < self.jumpToCycle:
+                    self.processPajeEvent()
+                self.jumpToCycle = -2
+        elif self.execution_mode == 'CONTINUOUS':
+            if self.advance_type == 'EVENT':
+                self.timer.start(125)
+            elif self.advance_type == 'CYCLE':
+                self.jumpToCycle = self.cycle + self.advance_increment
+                self.timer.start(125)
 
     def addText(self, label, text, width):
         self.text_widgets[label] = QtWidgets.QLabel(text)
@@ -223,27 +269,27 @@ class Visualizer(QtWidgets.QMainWindow):
         self.text_widgets[label].setFixedWidth(width)
         self.statusBar().addWidget(self.text_widgets[label], 0)
 
-    def addField(self, Name, buttonText="Finish", inputType=QtWidgets.QLineEdit, editingFinishedCallback=lambda: print('editing_finished'), buttonType=QtWidgets.QPushButton, clickedCallback=lambda: print("clicked"),
-    ):
+    def addRadioField(self, name, display_name, fields, width, height):
         # Create a dock widget
-        dock_widget = QtWidgets.QDockWidget(Name, self)
-        dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures )
-        
-        # Create control fields
-        self.inputs[Name] = inputType()
-        self.inputs[Name].editingFinished.connect(editingFinishedCallback)
-        self.buttons[Name] = buttonType(text=buttonText)
-        self.buttons[Name].clicked.connect(clickedCallback)
+        dock_widget = QtWidgets.QDockWidget(display_name, self)
+        dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
 
         # Create a QHBoxLayout for the dock widget's content
         layout = QtWidgets.QHBoxLayout()
-        layout.addWidget(self.inputs[Name])
-        layout.addWidget(self.buttons[Name])
+
+        # Create control fields
+        for field in fields:
+            self.buttons["%s:%s" % (name, field['value'])] = QtWidgets.QRadioButton(field['display_name'], parent=self)
+            self.buttons["%s:%s" % (name, field['value'])].toggled.connect(field['callback'])
+            layout.addWidget(self.buttons["%s:%s" % (name, field['value'])])
+            if field.get('default'):
+                self.buttons["%s:%s" % (name, field['value'])].setChecked(True)
+
 
         # Create a QWidget for the dock widget's content
         dock_content_widget = QtWidgets.QWidget()
-        dock_content_widget.setFixedWidth(250)
-        dock_content_widget.setFixedHeight(40)
+        dock_content_widget.setFixedWidth(width)
+        dock_content_widget.setFixedHeight(height)
         dock_content_widget.setLayout(layout)
 
         # Set the dock widget's content
@@ -252,10 +298,60 @@ class Visualizer(QtWidgets.QMainWindow):
         # Add the dock widget to the main window
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock_widget)
 
-    def addComplexField(self, Name):
+    def changeAdvanceType(self, text):
+        if text == 'Ciclo':
+            self.advance_type = 'CYCLE'
+        elif text == 'Evento':
+            self.advance_type = 'EVENT'
+        self.setFocus(EDITING_FINISHED)
+
+    def changeAdvanceIncrement(self, increment):
+        try:
+            self.advance_increment = int(increment)
+        except:
+            pass
+        # self.setFocus(EDITING_FINISHED)
+
+    def addField(self, name, display_name, width, height):
         # Create a dock widget
-        dock_widget = QtWidgets.QDockWidget(Name, self)
+        dock_widget = QtWidgets.QDockWidget(display_name, self)
         dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures )
+        
+        # Create a QHBoxLayout for the dock widget's content
+        layout = QtWidgets.QHBoxLayout()
+
+        # Create control fields
+        self.inputs[name] = QtWidgets.QLineEdit(str(self.advance_increment))
+        self.inputs[name].textChanged.connect(lambda increment: self.changeAdvanceIncrement(increment))
+        layout.addWidget(self.inputs[name])
+
+        self.selectors[name] = QtWidgets.QComboBox()
+        self.selectors[name].addItems(['Evento', 'Ciclo'])
+        self.selectors[name].currentTextChanged.connect(lambda text: self.changeAdvanceType(text))
+        layout.addWidget(self.selectors[name])
+
+        self.buttons[name] = QtWidgets.QPushButton(text="Confirmar")
+        self.buttons[name].clicked.connect(lambda: self.advance())
+        layout.addWidget(self.buttons[name])
+
+
+        # Create a QWidget for the dock widget's content
+        dock_content_widget = QtWidgets.QWidget()
+        dock_content_widget.setFixedWidth(width)
+        dock_content_widget.setFixedHeight(height)
+        dock_content_widget.setLayout(layout)
+
+        # Set the dock widget's content
+        dock_widget.setWidget(dock_content_widget)
+
+        # Add the dock widget to the main window
+        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock_widget)
+
+
+    def addComplexField(self, name, display):
+        # Create a dock widget
+        dock_widget = QtWidgets.QDockWidget(display, self)
+        dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
         
         # Create selectors (combo boxes)
         self.selectors["Type"] = QtWidgets.QComboBox()
@@ -264,19 +360,24 @@ class Visualizer(QtWidgets.QMainWindow):
         self.selectors["Buffer"].setFixedWidth(200)
         
         # Create a line editor
-        self.inputs[Name] = QtWidgets.QLineEdit()
-        # self.inputs[Name].editingFinished.connect(editingFinishedCallback)
+        self.inputs[name] = QtWidgets.QLineEdit()
+        # self.inputs[name].editingFinished.connect(editingFinishedCallback)
         
         # Create a button
-        self.buttons[Name] = QtWidgets.QPushButton('Advance')
-        self.buttons[Name].clicked.connect(self.onSearch)
+        self.buttons[name] = QtWidgets.QPushButton('Avançar')
+        self.buttons[name].clicked.connect(self.onSearch)
         
         # Create a QHBoxLayout for the dock widget's content
         layout = QtWidgets.QHBoxLayout()
         layout.addWidget(self.selectors["Type"])
-        layout.addWidget(self.inputs[Name])
+        layout.addWidget(self.inputs[name])
+        text_widget = QtWidgets.QLabel("entrar no")
+        text_widget.setStyleSheet("font-size: 12px; background-color: transparent;")
+        text_widget.setFixedWidth(50)
+        layout.addWidget(text_widget)
+
         layout.addWidget(self.selectors["Buffer"])
-        layout.addWidget(self.buttons[Name])
+        layout.addWidget(self.buttons[name])
        
         # Create a QWidget for the dock widget's content
         dock_content_widget = QtWidgets.QWidget()
@@ -299,6 +400,7 @@ class Visualizer(QtWidgets.QMainWindow):
 
         if self.found:
             self.found.selectedChange.emit(False)
+            self.found = None
 
         self.search = {
             'Type': Type,
@@ -306,49 +408,20 @@ class Visualizer(QtWidgets.QMainWindow):
             'Buffer': Buffer
         }
 
-        if self.parser.mode == 'EVENT':
-            while self.processPajeEvent():
-                pass
-        elif self.parser.mode == 'CYCLE':
+        if self.execution_mode == 'STEP':
+            while not self.found:
+                self.processPajeEvent()
+        elif self.execution_mode == 'CONTINUOUS':
             self.timer.start(125)
-
-    def addRadioField(self, Name):
-        # Create a dock widget
-        dock_widget = QtWidgets.QDockWidget(Name, self)
-        dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
-        
-        # Create control fields
-        self.buttons["%s:%s" % (Name, 'EVENT')] = QtWidgets.QRadioButton('EVENT', parent=self)
-        self.buttons["%s:%s" % (Name, 'EVENT')].toggled.connect(lambda: self.changeParserMode('EVENT'))
-            
-        self.buttons["%s:%s" % (Name, 'CYCLE')] = QtWidgets.QRadioButton('CYCLE', parent=self)
-        self.buttons["%s:%s" % (Name, 'CYCLE')].toggled.connect(lambda: self.changeParserMode('CYCLE'))
-
-        # Create a QHBoxLayout for the dock widget's content
-        layout = QtWidgets.QHBoxLayout()
-        layout.addWidget(self.buttons["%s:%s" % (Name, 'EVENT')])
-        layout.addWidget(self.buttons["%s:%s" % (Name, 'CYCLE')])
-
-        # Create a QWidget for the dock widget's content
-        dock_content_widget = QtWidgets.QWidget()
-        dock_content_widget.setFixedWidth(180)
-        dock_content_widget.setFixedHeight(40)
-        dock_content_widget.setLayout(layout)
-
-        # Set the dock widget's content
-        dock_widget.setWidget(dock_content_widget)
-
-        # Add the dock widget to the main window
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock_widget)
 
     def processPajeEvent(self):
         pajeEvent = self.parser.getEvent()
 
         if pajeEvent == None:
             self.close()
-            return False
 
         self.text_widgets['event'].setText('event:\t%s' % pajeEvent[:-1])
+        print('event:\t%s' % pajeEvent[:-1])
 
         split = pajeEvent.split()
         eventName = split[0]
@@ -381,7 +454,6 @@ class Visualizer(QtWidgets.QMainWindow):
             BufferName = split[3]
             Content = split[4]
 
-
             self.buffers[BufferName].addPackage(Type, Id, Content, status_colors=status_colors)
 
             if self.search:
@@ -391,86 +463,67 @@ class Visualizer(QtWidgets.QMainWindow):
                         Operation = split[2]
 
                         if self.search['Id'][1:-1] == Operation:
+                            self.buffers[BufferName].packages[Id].selectedChange.emit(True)
                             self.found = self.buffers[BufferName].packages[Id]
                             self.search = None
 
-                            self.buffers[BufferName].packages[Id].selectedChange.emit(True)
-    
-                            if self.parser.mode == 'CYCLE':
+                            if self.execution_mode == 'CONTINUOUS':
                                 self.timer.stop()
     
-                            self.update()
-                            return False
-
                     else:
                         if self.search['Id'] == Id: 
+                            self.buffers[BufferName].packages[Id].selectedChange.emit(True)
                             self.found = self.buffers[BufferName].packages[Id]
                             self.search = None
 
-                            self.buffers[BufferName].packages[Id].selectedChange.emit(True)
-    
-                            if self.parser.mode == 'CYCLE':
+                            if self.execution_mode == 'CONTINUOUS':
                                 self.timer.stop()
     
-                            self.update()
-                            return False
-
         elif eventName == RemovePackage:
             Id = split[2]
             BufferName = split[3]
+
             self.buffers[BufferName].removePackage(Id)
                 
         elif eventName == UpdatePackage:
             Id = split[2]
             BufferName = split[3]
             Content = split[4]
+
             self.buffers[BufferName].updatePackage(Id, Content)
 
         elif eventName == Clock:
             Cycle = split[1]
+
             self.cycle = int(Cycle)
             self.text_widgets['cycle'].setText('cycle:\t%s' % self.cycle)
                 
-            if self.parser.mode == 'CYCLE':
-                if self.jumpToCycle != -2:
-                    if (self.jumpToCycle == self.cycle):
-                        self.jumpToCycle = -2
+            if self.execution_mode == 'CONTINUOUS':
+                if self.advance_type == 'CYCLE':
+                    if self.cycle >= self.jumpToCycle:
                         self.timer.stop()
-                else:
-                    if not self.search:
-                        self.timer.stop()
-            else:
-                if self.jumpToCycle != -2:
-                    if (self.jumpToCycle == self.cycle):
-                        self.jumpToCycle = -2
 
         elif eventName == DefineStatusColor:
             Status = split[1][1:-1]
             Color = split[2][1:-1]
+
             status_colors[Status] = QtGui.QColor(Color)
 
         elif eventName == DefineBufferColor:
             Type = split[1]
             Color = split[2][1:-1]
+
             buffer_colors[Type] = QtGui.QColor(Color)
     
+        if self.execution_mode == 'CONTINUOUS':
+            if self.advance_type == 'EVENT':
+                if self.advance_executed < self.advance_increment - 1:
+                    self.advance_executed = self.advance_executed + 1
+                else:
+                    self.advance_executed = 0
+                    self.timer.stop()
+
         self.update()
-        return self.jumpToCycle != -2
-
-    def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key_Right:
-            if self.parser != None:
-                if self.parser.mode == 'EVENT':
-                    self.processPajeEvent()
-                elif self.parser.mode == 'CYCLE':
-                    self.timer.start(125)
-            event.accept()
-        
-        elif event.key() == QtCore.Qt.Key_Escape:
-            self.close()
-            event.accept()
-
-        super().keyPressEvent(event)
 
     def addBuffer(self, Name, Type, buffer_colors, grid_geometry):
         self.buffers[Name] = Buffer.BufferObject(Name, Type, buffer_colors=buffer_colors, grid_geometry=grid_geometry)
@@ -490,8 +543,6 @@ class Visualizer(QtWidgets.QMainWindow):
         sub_window.show()
         
         self.setFocus(PROGRAM_START)
-
-
 
     def loadSubWindowStates(self, Name, Type, buffer_colors=None):
         self.settings.beginGroup("SubWindows")
