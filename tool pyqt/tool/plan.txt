@@ -1,8 +1,0 @@
-relembrar como o OrCS funciona
-    compilar
-    executar
-    gerar logs
-
-mudar o nivel de debug nos defines para checar os prints em menor quantidade
-checar no código do OrCS a entrada dos pacotes no decode buffer
-implementar print da entrada e saída dos pacotes do decode buffer

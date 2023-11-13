@@ -1,4 +1,0 @@
-spawn triangle as t1
-move t1 right
-move t1 left
-delete t1
