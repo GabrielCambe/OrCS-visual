@@ -1,1 +1,1 @@
-import Window from './Window';
+import Window
