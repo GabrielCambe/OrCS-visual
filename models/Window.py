@@ -183,17 +183,18 @@ class Visualizer(QtWidgets.QMainWindow):
         # Create settings
         self.settings = QtCore.QSettings("HiPES", "OrCS-Architecture-Viualizer")
 
-        clear_action = QtWidgets.QAction("Clear", self)
-        clear_action.triggered.connect(self.settings.clear)
-        self.addAction(clear_action)
-
         fullscreen_action = QtWidgets.QAction("Fullscreen Mode", self)
         fullscreen_action.setShortcut("Ctrl+F")
         fullscreen_action.triggered.connect(self.toggle_fullscreen)
 
-        settings_menu = self.menuBar().addMenu("Settings")
-        settings_menu.addAction(clear_action)
+        clear_action = QtWidgets.QAction("Clear Settings", self)
+        clear_action.setShortcut("Del")
+        clear_action.triggered.connect(self.settings.clear)
+        self.addAction(clear_action)
+
+        settings_menu = self.menuBar().addMenu("Other")
         settings_menu.addAction(fullscreen_action)
+        settings_menu.addAction(clear_action)
 
         self.settings.beginGroup("Trace")
         
@@ -271,7 +272,7 @@ class Visualizer(QtWidgets.QMainWindow):
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File", "", "Text Files (*.txt);;All Files (*)", options=options)
 
         if file_path:
-            self.parser = Trace.PajeParser(Trace.FileReader(file_path))
+            self.parser = Trace.PajeParser(file_path)
             self.text_widgets['trace'].setText('trace:\t%s' % file_path)
             self.buttons["executionMode:STEP"].setChecked(True)
 
@@ -455,7 +456,6 @@ class Visualizer(QtWidgets.QMainWindow):
 
     def processPajeEvent(self):
         pajeEvent = self.parser.getEvent()
-        print('event:\t%s' % pajeEvent, end="")
 
         if pajeEvent is None:
             self.close()

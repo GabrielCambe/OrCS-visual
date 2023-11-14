@@ -1,7 +1,7 @@
 import sys
 from PyQt5 import QtWidgets
 
-from Window import Visualizer
+from models.Window import Visualizer
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
