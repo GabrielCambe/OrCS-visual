@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 
-import Package
+from . import Package
 
 
 class CustomQMdiSubWindow(QtWidgets.QMdiSubWindow):

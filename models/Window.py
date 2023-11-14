@@ -1,8 +1,8 @@
 import time
 from PyQt5 import QtWidgets, QtGui, QtCore
 
-import Trace
-import Buffer
+from . import Trace
+from . import Buffer
 
 
 PROGRAM_START = QtCore.Qt.FocusReason(0)
