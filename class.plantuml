@@ -1,0 +1,15 @@
+@startuml diagrama
+note "Lê o arquivo de entrada" as paje
+Trace.PajeParser .. paje
+
+class Window.Visualizer <<QMainWindow>>
+Visualizer *-- Trace.PajeParser: "1:1"
+
+
+Visualizer *- Buffer.BufferSubWindow: "1:N"
+Buffer.BufferSubWindow o- Buffer.BufferObject: "1:1"
+Buffer.BufferObject *- Package.PackageObject: "1:N"
+
+Visualizer *-- Package.PackageInfoSubWindow: "1:N" 
+Package.PackageInfoSubWindow <. Package.PackageObject: instancia
+@enduml
