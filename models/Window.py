@@ -10,8 +10,8 @@ EDITING_FINISHED = QtCore.Qt.FocusReason(1)
 CHANGED_MODE = QtCore.Qt.FocusReason(2)
 LOADED_TRACE = QtCore.Qt.FocusReason(3)
 
-PajeDefineContainerType = '0'
-PajeCreateContainer = '1'
+DefineBufferType = '0'
+CreateBuffer = '1'
 PajeDefineEventType = '3'
 InsertPackage = '5'
 RemovePackage = '6'
@@ -34,42 +34,17 @@ PACKAGE_STATE_WAIT = 'PACKAGE_STATE_WAIT'
 PACKAGE_STATE_READY = 'PACKAGE_STATE_READY'
 
 status_colors = {}
-buffer_colors = {}
+BUFFER_COLORS = {}
 
-# TODO: Definir como substituir as UOPS e FU que tem a ver com Move Elimination
 # TODO: Adicionar informações extras na message box de conteudo dos pacotes (ver caderno) 
-# TODO: Retomar escrita do TCC 
     
-
-
 # EXTRA:
     # TODO: corrigir erros ao settar geometria e usar mais de 1 tela
     # TODO: Usar strip("_\"") para remover trailing caracters em vez de [1:-1]
-    # TODO: colocar pela posição no buffer do OrCS na inserção do package, não o packageHistory lenght
     # TODO: adicionar barra de execução, (tipo barra de play de video)
     # TODO: Usar QProgressDialog quando tiver criando o vetor com os dados e seus eventos
-    # TODO: Escolher entre
-        # TODO: Adicionar informações extras no proprio pacote qundo passar o mouse em cima, mudar a forma do pacote
-        # TODO: Criar uma custom message box c mais infos e remover espaço da messagebox
-        # TODO: Abrir uma nova janela mdi ao invés de uma messagebox para que você possa aompanhar as mudanças no conteudo da instrução
-    # TODO: pensei em adicionar (0, linha do evento, evento inverso), que tal criar os eventos inversos no código do orcs?
-    # TODO: adicionar ponteiros para eventos de clock  para as linhas em vez das linhas em si
-        # veja quantos clocks tem e vá construindo
-        # realize busca binária ou busca linear em cima de um vetor de ponteiros para pegar as linhas
     # TODO: Crete custom scroolbar widgets for  the mdi subwindows
     # TODO:
-
-
-class CustomQGraphicsView(QtWidgets.QGraphicsView):
-    def __init__(self, buffer=None, *args, **kwargs):
-        self.buffer = buffer
-        super().__init__(*args, **kwargs)
-
-    def resizeEvent(self, event):
-        self.buffer.setPos(0, 0)
-        self.buffer.setGeometry(QtCore.QRectF(0, 0, event.size().width(), event.size().height()))
-
-        super().resizeEvent(event)
 
 
 class Visualizer(QtWidgets.QMainWindow):
@@ -82,6 +57,7 @@ class Visualizer(QtWidgets.QMainWindow):
         self.text_widgets = {}
         self.buffers = {}
         self.inputs = {}
+        self.sliders = {}
         self.buttons = {}
         self.selectors = {}
         self.search = None
@@ -91,6 +67,8 @@ class Visualizer(QtWidgets.QMainWindow):
         self.advance_increment = 1
         self.advance_executed = 0
         self.is_playing = False
+        # self.delay = 125
+        self.delay = 1
 
         # Timer to execute cycle advances
         self.timer = QtCore.QTimer(self)
@@ -98,17 +76,29 @@ class Visualizer(QtWidgets.QMainWindow):
 
         # Set window commons
         self.setWindowTitle(title)
-        self.setGeometry(QtGui.QGuiApplication.screens()[-1].availableGeometry())
+        # self.setGeometry(QtGui.QGuiApplication.screens()[-1].availableGeometry())
+        self.setGeometry(QtGui.QGuiApplication.primaryScreen().availableGeometry())
 
         # Central Widget
         self.mdi_area = QtWidgets.QMdiArea()
+        self.mdi_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.mdi_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.mdi_area.setBackground(QtGui.QBrush(QtGui.QColor('#C3B9FF'), QtCore.Qt.SolidPattern))
         self.setCentralWidget(self.mdi_area)
 
         # Add text to the statusBar
         self.statusBar().setStyleSheet("QStatusBar { border-top: 1px solid gray; }")
-        self.addText('cycle', "cycle:\t%s" % self.cycle, 70)
+        self.addText('cycle', "cycle:\t%s" % self.cycle, 150)
 
         # Add control input fields
+        self.addPlayPauseButton(QtCore.Qt.TopDockWidgetArea)
+        self.addDockSpacing(QtCore.Qt.TopDockWidgetArea)
+        self.addSlider(
+            "delay", "Delay",
+            250, 40,
+            QtCore.Qt.TopDockWidgetArea
+        )
+
         self.addRadioField(
             "executionMode", "Modo de Execução",
             [
@@ -124,43 +114,46 @@ class Visualizer(QtWidgets.QMainWindow):
                     'default': True
                 }
             ],
-            180, 40
+            180, 40,
+            QtCore.Qt.BottomDockWidgetArea
         )
-
-        self.addDockSpacing()
+        self.addDockSpacing(QtCore.Qt.BottomDockWidgetArea)
         
         self.addField(
             "advance", "Avançar (Seta Direita)",
-            250, 40
+            250, 40,
+            QtCore.Qt.BottomDockWidgetArea
         )
-        self.addDockSpacing()
+        self.addDockSpacing(QtCore.Qt.BottomDockWidgetArea)
 
-        self.addComplexField("advanceUntil", "Avançar até")
-
-        self.addDockSpacing()
-
-        self.addPlayPauseButton()
+        self.addComplexField(
+            "advanceUntil",
+            "Avançar até",
+            QtCore.Qt.BottomDockWidgetArea
+        )
         
 
         # Trace menu and actions
         load_action = QtWidgets.QAction("Load", self)
         load_action.setShortcut("Ctrl+L")
         load_action.triggered.connect(self.loadTrace)
-        # self.addAction(load_action)
 
         advance_action = QtWidgets.QAction("Advance", self)
         advance_action.setShortcut("Right")
         advance_action.triggered.connect(self.advance)
-        # self.addAction(advance_action)
+
+        play_pause_action = QtWidgets.QAction("Play/Pause", self)
+        play_pause_action.setShortcut("Space")
+        play_pause_action.triggered.connect(lambda: self.toggle_play_pause())
 
         exit_action = QtWidgets.QAction("Exit", self)
         exit_action.setShortcut("Esc")
         exit_action.triggered.connect(self.close)
-        # self.addAction(exit_action)
 
         trace_menu = self.menuBar().addMenu("Trace")
         trace_menu.addAction(load_action)
-        trace_menu.addAction(advance_action)
+        self.addAction(advance_action)
+        self.addAction(play_pause_action)
         trace_menu.addAction(exit_action)
 
         # Buffer menu and actions
@@ -201,12 +194,16 @@ class Visualizer(QtWidgets.QMainWindow):
         self.tree = None
         
         file_path = self.settings.value("FilePath")
-        self.addText('event', 'event:\t', 1000)
+        self.addText('event', 'event:\t', 900)
         self.addText('trace', 'trace:\t', 600)
 
         if file_path:
-            self.parser = Trace.PajeParser(file_path)
-            self.text_widgets['trace'].setText('trace:\t%s' % file_path)
+            try:
+                self.parser = Trace.PajeParser(file_path)
+                self.text_widgets['trace'].setText('trace:\t%s' % file_path)
+            except Exception as e:
+                print(e)
+                pass
 
         self.settings.endGroup()
 
@@ -224,31 +221,19 @@ class Visualizer(QtWidgets.QMainWindow):
             self.buttons["playPause"].setText("Play")
             self.timer.stop()
         else:
+            if self.parser == None:
+                self.loadTrace()
             self.buttons["playPause"].setText("Pause")
-            self.timer.start(125)
+            self.timer.start(self.delay)
 
         self.is_playing = not self.is_playing
 
-    def addPlayPauseButton(self):
-        dock_widget = QtWidgets.QDockWidget(self)
-        dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
+    def changeExecutionMode(self, mode):
+        self.execution_mode = mode
+        self.setFocus(CHANGED_MODE)
 
-        # Create spacer widgets for adding spacing
-        bottom_widget = QtWidgets.QWidget()
-        # bottom_widget.setFixedSize(150, 40)  # Adjust the size as needed
-
-        bottom_layout = QtWidgets.QVBoxLayout()
-        self.buttons["playPause"] = QtWidgets.QPushButton("Play")
-        self.buttons["playPause"].clicked.connect(lambda: self.toggle_play_pause())
-        bottom_layout.addWidget(self.buttons["playPause"])
-
-        bottom_widget.setLayout(bottom_layout)
-        dock_widget.setWidget(bottom_widget)
-
-        # Create content widgets for the dock widgets
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock_widget)
-
-    def addDockSpacing(self):
+# Controls
+    def addDockSpacing(self, dockArea):
         dock_widget = QtWidgets.QDockWidget(self)
         dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
         # Create spacer widgets for adding spacing
@@ -263,45 +248,26 @@ class Visualizer(QtWidgets.QMainWindow):
         # dock_widget.setWidget(spacer)
         dock_widget.setWidget(separator)
         # Create content widgets for the dock widgets
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock_widget)
+        self.addDockWidget(dockArea, dock_widget)
 
-    def loadTrace(self):
-        options = QtWidgets.QFileDialog.Options()
-        options |= QtWidgets.QFileDialog.ReadOnly
+    def addPlayPauseButton(self, dockArea):
+        dock_widget = QtWidgets.QDockWidget(self)
+        dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
 
-        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File", "", "Text Files (*.txt);;All Files (*)", options=options)
+        # Create spacer widgets for adding spacing
+        bottom_widget = QtWidgets.QWidget()
+        bottom_widget.setFixedSize(150, 40)  # Adjust the size as needed
 
-        if file_path:
-            self.parser = Trace.PajeParser(file_path)
-            self.text_widgets['trace'].setText('trace:\t%s' % file_path)
-            self.buttons["executionMode:STEP"].setChecked(True)
+        bottom_layout = QtWidgets.QVBoxLayout()
+        self.buttons["playPause"] = QtWidgets.QPushButton("Play")
+        self.buttons["playPause"].clicked.connect(lambda: self.toggle_play_pause())
+        bottom_layout.addWidget(self.buttons["playPause"])
 
-            self.settings.beginGroup("Trace")
-            self.settings.setValue("FilePath", file_path)
-            self.settings.endGroup()
+        bottom_widget.setLayout(bottom_layout)
+        dock_widget.setWidget(bottom_widget)
 
-        self.setFocus(LOADED_TRACE)
-
-    def changeExecutionMode(self, mode):
-        self.execution_mode = mode
-        self.setFocus(CHANGED_MODE)
-
-    def advance(self):
-        if self.execution_mode == 'STEP':
-            if self.advance_type == 'EVENT':
-                for i in range(self.advance_increment):
-                    self.processPajeEvent()
-            elif self.advance_type == 'CYCLE':
-                self.jumpToCycle = self.cycle + self.advance_increment                
-                while self.cycle < self.jumpToCycle:
-                    self.processPajeEvent()
-                self.jumpToCycle = -1
-        elif self.execution_mode == 'CONTINUOUS':
-            if self.advance_type == 'EVENT':
-                self.toggle_play_pause()
-            elif self.advance_type == 'CYCLE':
-                self.jumpToCycle = self.cycle + self.advance_increment
-                self.toggle_play_pause()
+        # Create content widgets for the dock widgets
+        self.addDockWidget(dockArea, dock_widget)
 
     def addText(self, label, text, width):
         self.text_widgets[label] = QtWidgets.QLabel(text)
@@ -309,7 +275,7 @@ class Visualizer(QtWidgets.QMainWindow):
         self.text_widgets[label].setFixedWidth(width)
         self.statusBar().addWidget(self.text_widgets[label], 0)
 
-    def addRadioField(self, name, display_name, fields, width, height):
+    def addRadioField(self, name, display_name, fields, width, height, dockArea):
         # Create a dock widget
         dock_widget = QtWidgets.QDockWidget(display_name, self)
         dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
@@ -336,23 +302,9 @@ class Visualizer(QtWidgets.QMainWindow):
         dock_widget.setWidget(dock_content_widget)
 
         # Add the dock widget to the main window
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock_widget)
+        self.addDockWidget(dockArea, dock_widget)
 
-    def changeAdvanceType(self, text):
-        if text == 'Ciclo':
-            self.advance_type = 'CYCLE'
-        elif text == 'Evento':
-            self.advance_type = 'EVENT'
-        self.setFocus(EDITING_FINISHED)
-
-    def changeAdvanceIncrement(self, increment):
-        try:
-            self.advance_increment = int(increment)
-        except:
-            pass
-        # self.setFocus(EDITING_FINISHED)
-
-    def addField(self, name, display_name, width, height):
+    def addField(self, name, display_name, width, height, dockArea):
         # Create a dock widget
         dock_widget = QtWidgets.QDockWidget(display_name, self)
         dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures )
@@ -385,9 +337,9 @@ class Visualizer(QtWidgets.QMainWindow):
         dock_widget.setWidget(dock_content_widget)
 
         # Add the dock widget to the main window
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock_widget)
+        self.addDockWidget(dockArea, dock_widget)
 
-    def addComplexField(self, name, display):
+    def addComplexField(self, name, display, dockArea):
         # Create a dock widget
         dock_widget = QtWidgets.QDockWidget(display, self)
         dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
@@ -429,63 +381,75 @@ class Visualizer(QtWidgets.QMainWindow):
         dock_widget.setWidget(dock_content_widget)
 
         # Add the dock widget to the main window
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dock_widget)
+        self.addDockWidget(dockArea, dock_widget)
 
+    def addSlider(self, name, display_name, width, height, dockArea):
+        # Create a dock widget
+        dock_widget = QtWidgets.QDockWidget(display_name, self)
+        dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures )
+        
+        # Create a QHBoxLayout for the dock widget's content
+        layout = QtWidgets.QHBoxLayout()
 
-    def onSearch(self):
-        # Get the selected options from the selectors and input from line edit
-        Type = self.selectors["Type"].currentText()
-        _id = self.inputs['advanceUntil'].text()
-        Buffer = self.selectors["Buffer"].currentText()
+        # Create control fields
+        self.sliders[name] = QtWidgets.QSlider()
+        self.sliders[name].setTickPosition(QtWidgets.QSlider.TicksAbove)
+        self.sliders[name].setTickInterval(50)
+        self.sliders[name].setOrientation(1)  # Set slider orientation to horizontal (1) or vertical (2)
+        self.sliders[name].setMinimum(1)
+        self.sliders[name].setMaximum(1000)  
+        # self.sliders[name].sliderPressed.connect(self.slider_moved) 
+        self.sliders[name].valueChanged.connect(self.slider_moved)  # Connect slider movement to a function
+        # self.sliders[name].sliderReleased.connect(self.slider_moved)  
+        self.sliders[name].setValue(self.delay)
 
-        if self.found:
-            self.found.selectedChange.emit(False)
-            self.found = None
+        layout.addWidget(self.sliders[name])
+        
+        # Create a QWidget for the dock widget's content
+        dock_content_widget = QtWidgets.QWidget()
+        dock_content_widget.setFixedWidth(width)
+        dock_content_widget.setFixedHeight(height)
+        dock_content_widget.setLayout(layout)
 
-        self.search = {
-            'Type': Type,
-            'Id': '\"%s\"' % _id,
-            'Buffer': Buffer
-        }
+        # Set the dock widget's content
+        dock_widget.setWidget(dock_content_widget)
 
-        if self.execution_mode == 'STEP':
-            while not self.found:
-                self.processPajeEvent()
-        elif self.execution_mode == 'CONTINUOUS':
-            self.toggle_play_pause()
+        # Add the dock widget to the main window
+        self.addDockWidget(dockArea, dock_widget)
 
+# Events
     def processPajeEvent(self):
         pajeEvent = self.parser.getEvent()
+        # print(pajeEvent, end='')
 
         if pajeEvent is None:
-            self.close()
+            print("pajeEvent is None")
+            # TODO: Show alert and close on confirm
+            return
 
         self.text_widgets['event'].setText('event:\t%s' % pajeEvent[:-1])
 
         split = pajeEvent.split()
         eventName = split[0]
 
-        if eventName == PajeDefineContainerType:
-            pass
+        if eventName == DefineBufferType:
+            Type = split[1]
+            Color = split[2][1:-1]
+
+            BUFFER_COLORS[Type] = QtGui.QColor(Color)
        
-        elif eventName == PajeDefineEventType:
-            pass
+        elif eventName == CreateBuffer:
+            Name = split[1]
+            Type = split[2]
+            Width = split[3]
+            Size = split[4]
 
-        elif eventName == PajeCreateContainer:
-            Name = split[2]
-            Type = split[3]
-            Width = int(split[4])
-            Size = int(split[5])
-
-            if Type == SCREEN:
-                self.mdi_area.setBackground(QtGui.QBrush(QtGui.QColor('#C3B9FF'), QtCore.Qt.SolidPattern))
-            else:
-                if not self.loadSubWindowStates(Name, Type, buffer_colors=buffer_colors):
-                    self.addBuffer(
-                        Name, Type,
-                        buffer_colors=buffer_colors,
-                        grid_geometry=(Width, Size)
-                    )
+            if not self.loadSubWindowStates(Name, Type, BUFFER_COLORS=BUFFER_COLORS):
+                self.addBuffer(
+                    Name, Type,
+                    BUFFER_COLORS=BUFFER_COLORS,
+                    grid_geometry=(int(Width), int(Size))
+                )
 
         elif eventName == InsertPackage:
             Type = split[1]
@@ -547,12 +511,6 @@ class Visualizer(QtWidgets.QMainWindow):
             Color = split[2][1:-1]
 
             status_colors[Status] = QtGui.QColor(Color)
-
-        elif eventName == DefineBufferColor:
-            Type = split[1]
-            Color = split[2][1:-1]
-
-            buffer_colors[Type] = QtGui.QColor(Color)
     
         if self.execution_mode == 'CONTINUOUS':
             if self.advance_type == 'EVENT':
@@ -564,22 +522,102 @@ class Visualizer(QtWidgets.QMainWindow):
 
         self.update()
 
-    def addBuffer(self, Name, Type, buffer_colors, grid_geometry):
-        self.buffers[Name] = Buffer.BufferObject(Name, Type, buffer_colors, grid_geometry, self.mdi_area)
+    def advance(self):
+        if self.execution_mode == 'STEP':
+            if self.advance_type == 'EVENT':
+                for i in range(self.advance_increment):
+                    self.processPajeEvent()
+            elif self.advance_type == 'CYCLE':
+                self.jumpToCycle = self.cycle + self.advance_increment                
+                while self.cycle < self.jumpToCycle:
+                    self.processPajeEvent()
+                self.jumpToCycle = -1
+        elif self.execution_mode == 'CONTINUOUS':
+            if self.advance_type == 'EVENT':
+                self.toggle_play_pause()
+            elif self.advance_type == 'CYCLE':
+                self.jumpToCycle = self.cycle + self.advance_increment
+                self.toggle_play_pause()
+
+    def changeAdvanceType(self, text):
+        if text == 'Ciclo':
+            self.advance_type = 'CYCLE'
+        elif text == 'Evento':
+            self.advance_type = 'EVENT'
+        self.setFocus(EDITING_FINISHED)
+
+    def changeAdvanceIncrement(self, increment):
+        try:
+            self.advance_increment = int(increment)
+        except:
+            pass
+        # self.setFocus(EDITING_FINISHED)
+
+    def slider_moved(self):
+        value = self.sliders["delay"].value()
+        self.delay = value
+        if self.timer.isActive():
+            self.timer.stop()
+            self.timer.start(self.delay)
+
+    def onSearch(self):
+        # Get the selected options from the selectors and input from line edit
+        Type = self.selectors["Type"].currentText()
+        _id = self.inputs['advanceUntil'].text()
+        Buffer = self.selectors["Buffer"].currentText()
+
+        if self.found:
+            self.found.selectedChange.emit(False)
+            self.found = None
+
+        self.search = {
+            'Type': Type,
+            'Id': '\"%s\"' % _id,
+            'Buffer': Buffer
+        }
+
+        if self.execution_mode == 'STEP':
+            while not self.found:
+                self.processPajeEvent()
+        elif self.execution_mode == 'CONTINUOUS':
+            self.toggle_play_pause()
+
+    def addBuffer(self, Name, Type, BUFFER_COLORS, grid_geometry):
         self.selectors['Buffer'].addItem(Name)
 
-        scene = QtWidgets.QGraphicsScene()
-        scene.addItem(self.buffers[Name])
-        view = CustomQGraphicsView(buffer=self.buffers[Name])
-        view.setScene(scene)
-
-        sub_window = Buffer.CustomQMdiSubWindow(Name, view, save_in_settings=True)
+        sub_window = Buffer.CustomQMdiSubWindow(
+            Name, Type,
+            self.buffers,
+            BUFFER_COLORS,
+            grid_geometry,
+            self.mdi_area,
+            is_container= Name in ['"Unified_Reservation_Station"', '"Unified_Functional_Units"'], 
+            save_in_settings=True
+        )
         sub_window.setParent(self.mdi_area)
         sub_window.show()
         
         self.setFocus(PROGRAM_START)
 
-    def loadSubWindowStates(self, Name, Type, buffer_colors=None):
+# Actions and Settings
+    def loadTrace(self):
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.ReadOnly
+
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File", "", "All Files (*);;Text Files (*.txt)", options=options)
+
+        if file_path:
+            self.parser = Trace.PajeParser(file_path)
+            self.text_widgets['trace'].setText('trace:\t%s' % file_path)
+            self.buttons["executionMode:STEP"].setChecked(True)
+
+            self.settings.beginGroup("Trace")
+            self.settings.setValue("FilePath", file_path)
+            self.settings.endGroup()
+
+        self.setFocus(LOADED_TRACE)
+
+    def loadSubWindowStates(self, Name, Type, BUFFER_COLORS=None):
         self.settings.beginGroup("SubWindows")
         sub_window_count = self.settings.beginReadArray("SubWindowList")
 
@@ -587,8 +625,8 @@ class Visualizer(QtWidgets.QMainWindow):
         
         for i in range(sub_window_count):
             self.settings.setArrayIndex(i)
-            title = self.settings.value("Title")
-            if (title == Name):
+
+            if self.settings.value("Title") == Name:
                 position = self.settings.value("Position")
                 size = self.settings.value("Size")
                 buffer_width = self.settings.value("BufferWidth")
@@ -596,8 +634,8 @@ class Visualizer(QtWidgets.QMainWindow):
 
                 self.addBuffer(
                     Name, Type, 
-                    buffer_colors=buffer_colors,
-                    grid_geometry=(buffer_width, buffer_size)
+                    BUFFER_COLORS=BUFFER_COLORS,
+                    grid_geometry=(int(buffer_width), int(buffer_size))
                 )
 
                 sub_window = self.mdi_area.subWindowList()[-1]
@@ -621,15 +659,14 @@ class Visualizer(QtWidgets.QMainWindow):
                     self.settings.setValue("Title", sub_window.windowTitle())
                     self.settings.setValue("Position", sub_window.geometry().topLeft())
                     self.settings.setValue("Size", sub_window.geometry().size())
-                    self.settings.setValue("BufferWidth", sub_window.widget().buffer.buffer_width)
-                    self.settings.setValue("BufferSize", sub_window.widget().buffer.buffer_size)
+                    self.settings.setValue("BufferWidth", sub_window.buffer.buffer_width)
+                    self.settings.setValue("BufferSize", sub_window.buffer.buffer_size)
 
 
             self.settings.endArray()
             self.settings.endGroup()
 
+# Main Window
     def closeEvent(self, event):
         self.saveSubWindowStates()
         event.accept()
-
-
