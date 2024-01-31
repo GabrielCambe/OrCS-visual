@@ -3,31 +3,31 @@ from . import Package
 
 
 class CustomQMdiSubWindow(QtWidgets.QMdiSubWindow):
-    def __init__(self, Name, Type, buffers, BUFFER_COLORS, grid_geometry, mdi_area, is_container=False, save_in_settings=False, *args, **kwargs):
+    def __init__(self, _Id, _Name, _Type, buffers, BUFFER_COLORS, grid_geometry, is_container=False, save_in_settings=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
         scene = QtWidgets.QGraphicsScene()
-        buffers[Name] = BufferObject(
-            Name, Type,
+        buffers[_Id] = BufferObject(
+            _Id, _Name, _Type,
             BUFFER_COLORS,
             grid_geometry,
-            mdi_area,
+            self.parent(),
             self,
             is_container=is_container
         )
-        self.buffer = buffers[Name]
-        scene.addItem(buffers[Name])
+        self.buffer = buffers[_Id]
+        scene.addItem(buffers[_Id])
         view = QtWidgets.QGraphicsView()
-        view.setBackgroundBrush(QtGui.QBrush(BUFFER_COLORS[Type], QtCore.Qt.SolidPattern))
+        view.setBackgroundBrush(QtGui.QBrush(BUFFER_COLORS[_Type], QtCore.Qt.SolidPattern))
         view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
         self.setWidget(view)        
         self.widget().setScene(scene)
         
-        self.setWindowTitle("%s %d/%d" % (Name[1:-1], 0, grid_geometry[1]))
-        self.setGeometry(0, 0, int(mdi_area.width()/7) , mdi_area.height())
+        self.setWindowTitle("%s %d/%d" % (_Name[1:-1], 0, grid_geometry[1]))
+        self.setGeometry(0, 0, int(self.parent().width()/7) , self.parent().height())
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowMinimizeButtonHint)
         pixmap = QtGui.QPixmap(32, 32)
         pixmap.fill(QtCore.Qt.transparent)  
@@ -51,11 +51,12 @@ class CustomQMdiSubWindow(QtWidgets.QMdiSubWindow):
         
 
 class BufferObject(QtWidgets.QGraphicsWidget):
-    def __init__(self, Name, Type, buffer_colors, grid_geometry, mdi_area, mdi_sub_window, is_container, *args, **kwargs):
+    def __init__(self, _Id, _Name, _Type, buffer_colors, grid_geometry, mdi_area, mdi_sub_window, is_container, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._Name = Name
-        self._Type = Type
+        self._Id = _Id
+        self._Name = _Name
+        self._Type = _Type
 
         self.penWidth = 2.0
         self.buffer_colors = buffer_colors
@@ -82,16 +83,16 @@ class BufferObject(QtWidgets.QGraphicsWidget):
         self.is_container = is_container
 
 
-    def addPackage(self, Type, Id, Content, status_colors):
-        # print(self._Name," addPackage() ", Id)
+    def addPackage(self, _Type, _Id, _Content, STATUS_COLORS):
+        # print(self._Name," addPackage() ", _Id)
 
-        self.packages[Id] = Package.PackageObject(
-            Id, Type, Content, status_colors,
+        self.packages[_Id] = Package.PackageObject(
+            _Id, _Type, _Content, STATUS_COLORS,
             self.mdi_area, self.position,
             parent=self
         )
 
-        self.addToLayout(self.packages[Id])
+        self.addToLayout(self.packages[_Id])
         self.position = self.position + 1
 
         self.mdi_sub_window.setWindowTitle("%s %d/%d" % (self._Name[1:-1], len(self.packages), self.buffer_size))
@@ -139,10 +140,10 @@ class BufferObject(QtWidgets.QGraphicsWidget):
 
         self.mdi_sub_window.setWindowTitle("%s %d/%d" % (self._Name[1:-1], len(self.packages), self.buffer_size))
 
-    def updatePackage(self, Id, Content):
-        # print(self._Name," updatePackage() ", Id)
+    def updatePackage(self, _Id, _Content):
+        # print(self._Name," updatePackage() ", _Id)
         
         try:
-            self.packages[Id].updateContent(Content)
+            self.packages[_Id].updateContent(_Content)
         except Exception as e:
-            print("Warning: updatePackage %s em %s" % (Id, self._Name))
+            print("Warning: updatePackage %s em %s" % (_Id, self._Name))

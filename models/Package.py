@@ -36,35 +36,41 @@ class CustomQMdiSubWindow(QtWidgets.QMdiSubWindow):
 class PackageObject(QtWidgets.QGraphicsWidget):
     selectedChange = QtCore.pyqtSignal(bool, name="selectedChange")
 
-    def __init__(self, Id, Type, Content, STATUS_COLORS, mdi_area, position, *args, **kwargs):
+    def __init__(self, _Id, _Type, _Content, STATUS_COLORS, mdi_area, position, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.content = eval(_Content)
+
         # Package Data
-        split = Content[1:-1].split(',')
-        Status = split[0]
-        Uop = split[1]
-        Operation = split[2]
+        Status = self.content.get('status')
+        Operation = self.content.get('operation')
 
         self.STATUS_COLORS = STATUS_COLORS
         
-        self._Id = Id
-        self._Type = Type
+        if "_" not in _Id: 
+            self._Id = _Id 
+            self._Id_display = _Id 
+        else:
+            self._Id = _Id 
+            self._Id_display = _Id.split("_")[0]
+        
+        self._Type = _Type
         self._fillColor = self.STATUS_COLORS[Status]
 
         # SubWindow Data
         self._mdiArea = mdi_area
-        self.title = "%s: %s" %  (self._Type, self._Id)
-        self.content = str({"asm": Uop})
+        # self.title = "%s: %s" %  (self._Type, self._Id)
+        self.title = "%s: %s" %  (self._Type, self._Id_display)
         self.sub_window = None
 
         # Package Label
         self.text_widgets = {}
         
-        self.text_Id = "%s" % (self._Id[1:-1]) if Operation == 'null' else "%s|%s" % (Operation, self._Id[1:-1])
+        self.text_Id = "%s" % (self._Id[1:-1]) if Operation == None else "%s|%s" % (Operation, self._Id_display[1:-1])
         if len(self.text_Id) > 2:
-            self.display_text = "...%s" % self._Id[1:-1][-2:]
+            self.display_text = "...%s" % self._Id_display[1:-1][-2:]
         else:
-            self.display_text = self._Id[1:-1][-2:]
+            self.display_text = self._Id_display[1:-1][-2:]
         
         self.text_widgets["text"] = QtWidgets.QGraphicsProxyWidget(self)
         self.text_widgets["text"].setWidget(QtWidgets.QLabel(self.display_text))
@@ -118,7 +124,7 @@ class PackageObject(QtWidgets.QGraphicsWidget):
             container = QtWidgets.QWidget()
             layout = QtWidgets.QVBoxLayout()
 
-            for key, value in eval(self.content).items():
+            for key, value in self.content.items():
                 key_label = QtWidgets.QLabel(key)
                 value_frame = QtWidgets.QFrame()
                 value_label = QtWidgets.QLabel(str(value))
@@ -154,14 +160,12 @@ class PackageObject(QtWidgets.QGraphicsWidget):
 
         self.update()
 
-    def updateContent(self, Content):
-        split = Content[1:-1].split(',')
-        Status = split[0]
-        Uop = split[1]
-        Operation = split[2]
+    def updateContent(self, _Content):
+        content = eval(_Content)
 
-        self._fillColor = self.STATUS_COLORS[Status]
-        self.content = str({"asm": Uop})
+        self.content.update(content)
+
+        self._fillColor = self.STATUS_COLORS[self.content.get('status')]
 
         self.update()
 

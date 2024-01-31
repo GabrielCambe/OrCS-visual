@@ -33,8 +33,9 @@ PACKAGE_STATE_FREE = 'PACKAGE_STATE_FREE'
 PACKAGE_STATE_WAIT = 'PACKAGE_STATE_WAIT'
 PACKAGE_STATE_READY = 'PACKAGE_STATE_READY'
 
-status_colors = {}
+STATUS_COLORS = {}
 BUFFER_COLORS = {}
+BUFFER_IDS = {}
 
 # TODO: Adicionar informações extras na message box de conteudo dos pacotes (ver caderno) 
     
@@ -66,8 +67,7 @@ class Visualizer(QtWidgets.QMainWindow):
         self.advance_type = 'EVENT'
         self.advance_increment = 1
         self.advance_executed = 0
-        self.is_playing = False
-        # self.delay = 125
+        self.is_playing = {"value": False, "triggered": None}
         self.delay = 1
 
         # Timer to execute cycle advances
@@ -144,7 +144,7 @@ class Visualizer(QtWidgets.QMainWindow):
 
         play_pause_action = QtWidgets.QAction("Play/Pause", self)
         play_pause_action.setShortcut("Space")
-        play_pause_action.triggered.connect(lambda: self.toggle_play_pause())
+        play_pause_action.triggered.connect(lambda: self.toggle_play_pause(True))
 
         exit_action = QtWidgets.QAction("Exit", self)
         exit_action.setShortcut("Esc")
@@ -216,17 +216,20 @@ class Visualizer(QtWidgets.QMainWindow):
         else:
             self.showFullScreen()  # Go fullscreen
 
-    def toggle_play_pause(self):
-        if self.is_playing:
+    def toggle_play_pause(self, triggered_by_click=False):
+        self.is_playing["triggered"] = triggered_by_click
+
+        if self.is_playing.get("value", False):
             self.buttons["playPause"].setText("Play")
+            self.is_playing["value"] = not self.is_playing["value"]
             self.timer.stop()
         else:
             if self.parser == None:
                 self.loadTrace()
             self.buttons["playPause"].setText("Pause")
+            self.is_playing["value"] = not self.is_playing["value"]
             self.timer.start(self.delay)
 
-        self.is_playing = not self.is_playing
 
     def changeExecutionMode(self, mode):
         self.execution_mode = mode
@@ -260,7 +263,7 @@ class Visualizer(QtWidgets.QMainWindow):
 
         bottom_layout = QtWidgets.QVBoxLayout()
         self.buttons["playPause"] = QtWidgets.QPushButton("Play")
-        self.buttons["playPause"].clicked.connect(lambda: self.toggle_play_pause())
+        self.buttons["playPause"].clicked.connect(lambda: self.toggle_play_pause(True))
         bottom_layout.addWidget(self.buttons["playPause"])
 
         bottom_widget.setLayout(bottom_layout)
@@ -420,7 +423,7 @@ class Visualizer(QtWidgets.QMainWindow):
 # Events
     def processPajeEvent(self):
         pajeEvent = self.parser.getEvent()
-        # print(pajeEvent, end='')
+        print(pajeEvent, end='')
 
         if pajeEvent is None:
             print("pajeEvent is None")
@@ -439,69 +442,83 @@ class Visualizer(QtWidgets.QMainWindow):
             BUFFER_COLORS[Type] = QtGui.QColor(Color)
        
         elif eventName == CreateBuffer:
-            Name = split[1]
-            Type = split[2]
-            Width = split[3]
-            Size = split[4]
+            _Id = split[1]
+            _Name = split[2]
+            _Type = split[3]
+            _Width = split[4]
+            _Size = split[5]
+            _IsContainer = split[6]
 
-            if not self.loadSubWindowStates(Name, Type, BUFFER_COLORS=BUFFER_COLORS):
-                self.addBuffer(
-                    Name, Type,
-                    BUFFER_COLORS=BUFFER_COLORS,
-                    grid_geometry=(int(Width), int(Size))
-                )
+            BUFFER_IDS[_Name] = int(_Id)
+
+            # if not self.loadSubWindowStates(_Id, _Name, _Type, BUFFER_IDS=BUFFER_IDS, BUFFER_COLORS=BUFFER_COLORS):
+            self.addBuffer(
+                int(_Id), _Name, _Type, _IsContainer,
+                BUFFER_COLORS=BUFFER_COLORS,
+                grid_geometry=(int(_Width), int(_Size))
+            )
 
         elif eventName == InsertPackage:
-            Type = split[1]
-            Id = split[2]
-            BufferName = split[3]
-            Content = split[4]
+            _Type = split[1]
+            _Id = split[2]
+            _BuffersId = split[3]
+            _Content = split[4]
 
-            self.buffers[BufferName].addPackage(Type, Id, Content, status_colors=status_colors)
+            buffersId = eval(_BuffersId)
 
-            if self.search:
-                if self.search['Buffer'] == BufferName:
-                    if self.search['Type'] == '\"OperationPackage\"' and Type == '\"UopPackage\"':
-                        split = Content[1:-1].split(',')
-                        Operation = split[2]
+            for _BufferId in buffersId:
+                self.buffers[_BufferId].addPackage(_Type, _Id, _Content, STATUS_COLORS=STATUS_COLORS)
 
-                        if self.search['Id'][1:-1] == Operation:
-                            self.buffers[BufferName].packages[Id].selectedChange.emit(True)
-                            self.found = self.buffers[BufferName].packages[Id]
-                            self.search = None
+                if self.search:
+                    if self.search['BufferId'] == _BufferId:
+                        if self.search['Type'] == '\"OperationPackage\"' and _Type == '\"UopPackage\"':
+                            content = eval(_Content)
+                            Operation = content.get('operation')
 
-                            if self.execution_mode == 'CONTINUOUS':
-                                self.toggle_play_pause()
-    
-                    else:
-                        if self.search['Id'] == Id: 
-                            self.buffers[BufferName].packages[Id].selectedChange.emit(True)
-                            self.found = self.buffers[BufferName].packages[Id]
-                            self.search = None
+                            if self.search['Id'][1:-1] == Operation:
+                                self.buffers[_BufferId].packages[_Id].selectedChange.emit(True)
+                                self.found = self.buffers[_BufferId].packages[_Id]
+                                self.search = None
 
-                            if self.execution_mode == 'CONTINUOUS':
-                                self.toggle_play_pause()
+                                if self.execution_mode == 'CONTINUOUS':
+                                    self.toggle_play_pause()
+        
+                        else:
+                            if self.search['Id'] == _Id: 
+                                self.buffers[_BufferId].packages[_Id].selectedChange.emit(True)
+                                self.found = self.buffers[_BufferId].packages[_Id]
+                                self.search = None
+
+                                if self.execution_mode == 'CONTINUOUS':
+                                    self.toggle_play_pause()
     
         elif eventName == RemovePackage:
-            Id = split[2]
-            BufferName = split[3]
+            _Id = split[2]
+            _BuffersId = split[3]
 
-            self.buffers[BufferName].removePackage(Id)
+            buffersId = eval(_BuffersId)
+
+            for _BufferId in buffersId:
+                self.buffers[_BufferId].removePackage(_Id)
                 
         elif eventName == UpdatePackage:
-            Id = split[2]
-            BufferName = split[3]
-            Content = split[4]
+            _Type = split[1]
+            _Id = split[2]
+            _BuffersId = split[3]
+            _Content = split[4]
 
-            self.buffers[BufferName].updatePackage(Id, Content)
+            buffersId = eval(_BuffersId)
+
+            for _BufferId in buffersId:
+                self.buffers[_BufferId].updatePackage(_Id, _Content)
 
         elif eventName == Clock:
-            Cycle = split[1]
+            _Cycle = split[1]
 
-            self.cycle = int(Cycle)
+            self.cycle = int(_Cycle)
             self.text_widgets['cycle'].setText('cycle:\t%s' % self.cycle)
                 
-            if self.execution_mode == 'CONTINUOUS':
+            if self.execution_mode == 'CONTINUOUS' and self.search == None and not self.is_playing.get("triggered", False):
                 if self.advance_type == 'CYCLE':
                     if self.cycle >= self.jumpToCycle:
                         self.toggle_play_pause()
@@ -510,9 +527,9 @@ class Visualizer(QtWidgets.QMainWindow):
             Status = split[1][1:-1]
             Color = split[2][1:-1]
 
-            status_colors[Status] = QtGui.QColor(Color)
+            STATUS_COLORS[Status] = QtGui.QColor(Color)
     
-        if self.execution_mode == 'CONTINUOUS':
+        if self.execution_mode == 'CONTINUOUS' and self.search == None and not self.is_playing.get("triggered", False):
             if self.advance_type == 'EVENT':
                 if self.advance_executed < self.advance_increment - 1:
                     self.advance_executed = self.advance_executed + 1
@@ -573,7 +590,7 @@ class Visualizer(QtWidgets.QMainWindow):
         self.search = {
             'Type': Type,
             'Id': '\"%s\"' % _id,
-            'Buffer': Buffer
+            'BufferId': BUFFER_IDS[Buffer]
         }
 
         if self.execution_mode == 'STEP':
@@ -582,20 +599,20 @@ class Visualizer(QtWidgets.QMainWindow):
         elif self.execution_mode == 'CONTINUOUS':
             self.toggle_play_pause()
 
-    def addBuffer(self, Name, Type, BUFFER_COLORS, grid_geometry):
-        self.selectors['Buffer'].addItem(Name)
+    def addBuffer(self, _Id, _Name, _Type, _IsContainer, BUFFER_COLORS, grid_geometry):
+        self.selectors['Buffer'].addItem(_Name)
 
         sub_window = Buffer.CustomQMdiSubWindow(
-            Name, Type,
+            _Id, _Name, _Type,
             self.buffers,
             BUFFER_COLORS,
             grid_geometry,
-            self.mdi_area,
-            is_container= Name in ['"Unified_Reservation_Station"', '"Unified_Functional_Units"'], 
-            save_in_settings=True
+            is_container=eval(_IsContainer), 
+            save_in_settings=True,
+            parent=self.mdi_area
         )
-        sub_window.setParent(self.mdi_area)
-        sub_window.show()
+
+        sub_window.showNormal()
         
         self.setFocus(PROGRAM_START)
 
@@ -670,3 +687,6 @@ class Visualizer(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         self.saveSubWindowStates()
         event.accept()
+
+    # def resetWindow(self):
+    #     pass
