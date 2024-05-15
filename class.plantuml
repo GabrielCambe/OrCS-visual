@@ -1,15 +1,70 @@
 @startuml diagrama
+class Visualizer<<QtWidgets.QMainWindow>>{
+    int skip_exit_confirmation
+    int play
+    int plot_name
+    int trace
+    int parser
+    int cycle
+    int jumpToCycle
+    int text_widgets
+    int buffers
+    int inputs
+    int sliders
+    int buttons
+    int selectors
+    int sub_windows
+    int search
+    int found
+    int execution_mode
+    int advance_type
+    int advance_increment
+    int advance_executed
+    int is_playing
+    int delay
+    int timer
+    int mdi_area
+    int settings
+    
+    void clear()
+    void toggle_fullscreen()
+    void toggle_play_pause(triggered_by_click=False)
+    void changeExecutionMode(mode)
+    void addDockSpacing(dockArea)
+    void addPlayPauseButton(dockArea)
+    void addText(label, text, width)
+    void addRadioField(name, display_name, fields, width, height, dockArea)
+    void addField(name, display_name, width, height, dockArea)
+    void addComplexField(name, display, dockArea)
+    void addSlider(name, display_name, width, height, dockArea)
+    void processPajeEvent()
+    void advance()
+    void changeAdvanceType(text)
+    void changeAdvanceIncrement(increment)
+    void slider_moved()
+    void onSearch()
+    void addBuffer(_Id, _Name, _Type, _IsContainer, window, BUFFER_COLORS, grid_geometry)
+    void loadTrace()
+    void loadSubWindowStates()
+    void loadHistogramSubwindowState(_Id, _Name, data, sub_window, parent)
+    void saveSubWindowStates()
+    void saveHistogramSubWindowStates()
+    void closeEvent(event)
+    void resetWindow()
+}
 note "Lê o arquivo de entrada" as paje
-Trace.PajeParser .. paje
+PajeParser .. paje
 
-class Window.Visualizer <<QMainWindow>>
-Visualizer *-- Trace.PajeParser: "1:1"
+class Visualizer <<QMainWindow>>
+Visualizer *-- PajeParser: 1:1
 
 
-Visualizer *- Buffer.BufferSubWindow: "1:N"
-Buffer.BufferSubWindow o- Buffer.BufferObject: "1:1"
-Buffer.BufferObject *- Package.PackageObject: "1:N"
+Visualizer *- BufferSubWindow: 1:N
+BufferSubWindow o- BufferObject: 1:1
+BufferObject *-- PackageObject: 1:N
 
-Visualizer *-- Package.PackageInfoSubWindow: "1:N" 
-Package.PackageInfoSubWindow <. Package.PackageObject: instancia
+Visualizer *-- PackageInfoSubWindow: 1:N 
+PackageInfoSubWindow <. PackageObject: instancia
 @enduml
+
+

@@ -8,7 +8,7 @@ PACKAGE_STATE_FREE = 'PACKAGE_STATE_FREE'
 PACKAGE_STATE_WAIT = 'PACKAGE_STATE_WAIT'
 PACKAGE_STATE_READY = 'PACKAGE_STATE_READY'
 
-class CustomQMdiSubWindow(QtWidgets.QMdiSubWindow):
+class PackageSubWindow(QtWidgets.QMdiSubWindow):
     def __init__(self, title, widget, closed_callback=None, save_in_settings=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -39,7 +39,7 @@ class PackageObject(QtWidgets.QGraphicsWidget):
     def __init__(self, _Id, _Type, _Content, STATUS_COLORS, mdi_area, position, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.content = eval(_Content)
+        self.content = _Content
 
         # Package Data
         Status = self.content.get('status')
@@ -142,7 +142,7 @@ class PackageObject(QtWidgets.QGraphicsWidget):
 
             container.setLayout(layout)
 
-            self.sub_window = CustomQMdiSubWindow(
+            self.sub_window = PackageSubWindow(
                 self.title, container,
                 closed_callback=lambda: self.selectedChange.emit(False)
             )
@@ -161,9 +161,7 @@ class PackageObject(QtWidgets.QGraphicsWidget):
         self.update()
 
     def updateContent(self, _Content):
-        content = eval(_Content)
-
-        self.content.update(content)
+        self.content.update(_Content)
 
         self._fillColor = self.STATUS_COLORS[self.content.get('status')]
 

@@ -6,10 +6,9 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-pyglet = "*"
-pygame = "*"
-tk = "*"
 pyqt5 = "*"
+matplotlib = "*"
+numpy = "*"
 
 [requires]
 python_version = "3.8"

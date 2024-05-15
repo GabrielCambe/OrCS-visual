@@ -1,9 +1,78 @@
+import sys
+import time
+
+import matplotlib
+import matplotlib.pyplot as plt
+
+
+from matplotlib.backends.backend_qtagg import FigureCanvas
+from matplotlib.backends.qt_compat import QtWidgets as MatPlotQtWidgets
+from matplotlib.figure import Figure
+
+import numpy as np
+
 from PyQt5 import QtWidgets, QtGui, QtCore
 from . import Package
 
+class HistogramSubWindow(MatPlotQtWidgets.QMdiSubWindow):
+    def __init__(self, _Id, _Name, data, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+       
+        self._Id = _Id
+        self.setWindowTitle(_Name)
+        self.setGeometry(0, 0, int(self.parent().width()/7) , int(0.29 * self.parent().height()))
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowMinimizeButtonHint)
+        pixmap = QtGui.QPixmap(32, 32)
+        pixmap.fill(QtCore.Qt.transparent)  
+        self.icon = QtGui.QIcon(pixmap)
+        self.setWindowIcon(self.icon) 
 
-class CustomQMdiSubWindow(QtWidgets.QMdiSubWindow):
-    def __init__(self, _Id, _Name, _Type, buffers, BUFFER_COLORS, grid_geometry, is_container=False, save_in_settings=False, *args, **kwargs):
+        self.save_in_settings = True
+
+        self.matplotlib_widget = FigureCanvas(Figure(figsize=(6, 4), dpi=60))
+        self.setWidget(self.matplotlib_widget)
+
+        self._dynamic_ax = self.matplotlib_widget.figure.subplots()
+
+        positions = list(range(len(data[1])))
+        counts = data[1]
+        self.bars = self._dynamic_ax.bar(positions, counts, width=1.0, align="center")
+
+        # seta os ticks do eixo y
+        self._dynamic_ax.set_ylim([0.0,1.0])
+        self._dynamic_ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+
+        # seta os ticks do eixo x
+        self._dynamic_ax.set_xlim(-0.5, len(positions)-0.5)
+        last = len(positions)-1
+        step = int((len(positions)+1)/4)
+        ticks = list(range(0, len(positions), step if step != 0 else 1))
+        if not last in ticks:
+            if (last - ticks[-1]) <= int(step/2):
+                ticks.pop(-1)
+            ticks.append(len(positions)-1)
+        self._dynamic_ax.set_xticks(ticks)
+
+        self.is_histogram = True
+
+    def closeEvent(self, event):
+        self.matplotlib_widget.figure.clear()
+        super().closeEvent(event)
+
+    def plot(self, data):
+        current_cycle = data[0]
+        positions = list(range(len(data[1])))
+        counts = data[1]
+        weigths = [c/current_cycle for c in counts]
+
+        if current_cycle >= 0:
+            for bar, count in zip(self.bars.patches, weigths):
+                bar.set_height(count)
+            self._dynamic_ax.figure.canvas.draw()
+
+class BufferSubWindow(QtWidgets.QMdiSubWindow):
+    def __init__(self, _Id, _Name, _Type, buffers, BUFFER_COLORS, grid_geometry, window, is_container=False, save_in_settings=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
@@ -27,7 +96,7 @@ class CustomQMdiSubWindow(QtWidgets.QMdiSubWindow):
         self.widget().setScene(scene)
         
         self.setWindowTitle("%s %d/%d" % (_Name[1:-1], 0, grid_geometry[1]))
-        self.setGeometry(0, 0, int(self.parent().width()/7) , self.parent().height())
+        self.setGeometry(0, 0, int(self.parent().width()/7) , int(0.7 * self.parent().height()))
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowMinimizeButtonHint)
         pixmap = QtGui.QPixmap(32, 32)
         pixmap.fill(QtCore.Qt.transparent)  
@@ -35,6 +104,7 @@ class CustomQMdiSubWindow(QtWidgets.QMdiSubWindow):
         self.setWindowIcon(self.icon) 
 
         self.save_in_settings = save_in_settings
+        self.is_histogram = False
 
     def contextMenuEvent(self, event):
         event.ignore()
@@ -63,7 +133,7 @@ class BufferObject(QtWidgets.QGraphicsWidget):
         self.color = buffer_colors[self._Type]
         
         self.packages = {}
-        self.position = 1
+        self.position = 0
 
         self.layout = QtWidgets.QGraphicsGridLayout()
         self.setLayout(self.layout)
@@ -82,6 +152,16 @@ class BufferObject(QtWidgets.QGraphicsWidget):
 
         self.is_container = is_container
 
+        self.occupancy_histogram_data = [0, [int(0) for _ in range(self.buffer_size+1)]]
+
+    def updateHistogramData(self, cycle):
+        i = len(self.packages)
+        self.occupancy_histogram_data[0] = cycle
+        self.occupancy_histogram_data[1][i] += 1 
+        try:
+            self.mdi_sub_window.histogram.plot(self.occupancy_histogram_data)
+        except Exception as e:
+            pass
 
     def addPackage(self, _Type, _Id, _Content, STATUS_COLORS):
         # print(self._Name," addPackage() ", _Id)
@@ -99,8 +179,8 @@ class BufferObject(QtWidgets.QGraphicsWidget):
     
     def addToLayout(self, package):
         grid_position = (
-            ((package.position - 1) // self.column_size) % self.row_size,
-            (package.position - 1) % self.column_size
+            ((package.position) // self.column_size) % self.row_size,
+            (package.position) % self.column_size
         )
         self.layout.addItem(package, *grid_position)
         for i in range(0, self.layout.rowCount() - 1):
@@ -126,9 +206,7 @@ class BufferObject(QtWidgets.QGraphicsWidget):
                 for packageKey in self.packages:
                     package = self.packages.get(packageKey)
                     if package.position > freedPosition:
-                        # print("%s: " % package._Id, package.position, freedPosition)
                         scene.removeItem(package)
-                        # self.removeFromLayout(package)
                         package.position = package.position - 1
                         self.addToLayout(package)
                         self.update()
