@@ -1,0 +1,45 @@
+@startuml VOrCS
+class Visualizer<<QtWidgets.QMainWindow>> {
+    {field} atributos
+    {method} 26 métodos
+}
+
+class BufferSubWindow {
+    {field} atributos
+    {method} métodos
+}
+
+class BufferObject {
+    {field} atributos
+    {method} métodos
+}
+
+class PajeParser {
+    {field} atributos
+    {method} métodos
+}
+
+class PackageInfoSubWindow {
+    {field} atributos
+    {method} métodos
+}
+
+class PackageObject {
+    {field} atributos
+    {method} métodos
+}
+
+note "Lê o arquivo de entrada" as paje
+PajeParser .. paje
+
+class Visualizer <<QMainWindow>>
+Visualizer *-- PajeParser: 1:1
+
+
+Visualizer *- BufferSubWindow: 1:N
+BufferSubWindow o- BufferObject: 1:1
+BufferObject *-- PackageObject: 1:N
+
+Visualizer *-- PackageInfoSubWindow: 1:N 
+PackageInfoSubWindow <. PackageObject: instancia
+@enduml

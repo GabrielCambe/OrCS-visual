@@ -1,0 +1,65 @@
+%EventDef DefineBufferType 0
+% Name string
+% Color string
+% IsContainer bool
+%EndEventDef
+%EventDef CreateBuffer 1
+% Id int
+% Name string
+% TypeName string
+% Width int
+% Size int
+%EndEventDef
+%EventDef DefinePackageType 2
+% Id int
+% Name string
+%EndEventDef
+%EventDef InsertPackage 5
+% TypeId int
+% Id string
+% BufferIds string
+% Content string
+%EndEventDef
+%EventDef RemovePackage 6
+% TypeId int
+% Id string
+% BufferIds string
+%EndEventDef
+%EventDef UpdatePackage 7
+% TypeId int
+% Id string
+% BufferIds string
+% Content string
+%EndEventDef
+%EventDef Clock 8
+% Cycle int
+%EndEventDef
+%EventDef DefineStatusColor 9
+% Status string
+% Color string
+%EndEventDef
+0 "FETCH_BUFFER" "#00000F" False
+0 "DECODE_BUFFER" "#00003F" False
+0 "UNIFIED_RESERVATION_STATION" "#00005F" True
+0 "UNIFIED_FUNCTIONAL_UNITS" "#00007F" True
+0 "MEMORY_ORDER_BUFFER_READ" "#00219F" False
+0 "MEMORY_ORDER_BUFFER_WRITE" "#0021AF" False
+0 "REORDER_BUFFER" "#0000FF" False
+0 "MISS_STATUS_HOLDING_REGISTER" "#FF00F1" False
+2 0 "OperationPackage"
+2 1 "UopPackage"
+9 "FREE" "#0000FF"
+9 "WAIT" "#FF0000"
+9 "READY" "#00FF00"
+9 "UNTREATED" "#FFFF00"
+9 "DRAM_FETCH" "#FFA500"
+1 0 "Fetch" "FETCH_BUFFER" 6 40
+1 1 "Decode" "DECODE_BUFFER" 5 128
+1 2 "Unified_RS" "UNIFIED_RESERVATION_STATION" 5 54
+1 3 "Unified_FU" "UNIFIED_FUNCTIONAL_UNITS" 6 31
+1 4 "MOB_Read" "MEMORY_ORDER_BUFFER_READ" 5 72
+1 5 "MOB_Write" "MEMORY_ORDER_BUFFER_WRITE" 5 56
+1 6 "ROB" "REORDER_BUFFER" 8 224
+1 7 "MSHR" "MISS_STATUS_HOLDING_REGISTER" 6 30
+8 0
+5 0 "1" [0,] {"status":"FREE","assembly":"MOV_GPRv_GPRv_89+R64+R64"}

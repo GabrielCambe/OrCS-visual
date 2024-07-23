@@ -1,3 +1,4 @@
+# import traceback
 import json
 from PyQt5 import QtWidgets, QtGui, QtCore
 
@@ -37,6 +38,7 @@ class PackageObject(QtWidgets.QGraphicsWidget):
     selectedChange = QtCore.pyqtSignal(bool, name="selectedChange")
 
     def __init__(self, _Id, _Type, _Content, STATUS_COLORS, mdi_area, position, *args, **kwargs):
+        self.render = True
         super().__init__(*args, **kwargs)
 
         self.content = _Content
@@ -183,7 +185,9 @@ class PackageObject(QtWidgets.QGraphicsWidget):
                 # self.bounding_box.setPen(QtCore.Qt.white)
 
                 self.render = True
-        except Exception:
+        except Exception as e:
+            # print(e)
+            # traceback.print_exc()
             pass
         super().resizeEvent(event)
 
