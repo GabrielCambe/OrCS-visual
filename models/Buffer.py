@@ -228,7 +228,7 @@ class BufferSubWindow(QtWidgets.QMdiSubWindow):
         self.setWidget(view)        
         self.widget().setScene(scene)
         
-        self.setWindowTitle("%s %d/%d" % (_Name[1:-1], 0, grid_geometry[1]))
+        self.setWindowTitle("%s %d/%d" % (_Name.strip("\""), 0, grid_geometry[1]))
         self.setGeometry(0, 0, int(self.parent().width()/7) , int(0.7 * self.parent().height()))
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowMinimizeButtonHint)
         pixmap = QtGui.QPixmap(32, 32)
@@ -333,7 +333,7 @@ class BufferObject(QtWidgets.QGraphicsWidget):
         self.addToLayout(self.packages[_Id])
         self.position = self.position + 1
 
-        self.mdi_sub_window.setWindowTitle("%s %d/%d" % (self._Name[1:-1], len(self.packages), self.buffer_size))
+        self.mdi_sub_window.setWindowTitle("%s %d/%d" % (self._Name.strip("\""), len(self.packages), self.buffer_size))
     
     def addToLayout(self, package):
         grid_position = (
@@ -376,7 +376,7 @@ class BufferObject(QtWidgets.QGraphicsWidget):
             # traceback.print_exc()
             pass
 
-        self.mdi_sub_window.setWindowTitle("%s %d/%d" % (self._Name[1:-1], len(self.packages), self.buffer_size))
+        self.mdi_sub_window.setWindowTitle("%s %d/%d" % (self._Name.strip("\""), len(self.packages), self.buffer_size))
 
     def updatePackage(self, _Id, _Content):
         # print(self._Name," updatePackage() ", _Id)

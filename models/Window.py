@@ -6,11 +6,15 @@ from . import Trace
 from . import Buffer
 
 
-PROGRAM_START = QtCore.Qt.FocusReason(0)
+# Screen focus reasons
+PROGRAM_STARTED = QtCore.Qt.FocusReason(0)
 EDITING_FINISHED = QtCore.Qt.FocusReason(1)
 CHANGED_MODE = QtCore.Qt.FocusReason(2)
 LOADED_TRACE = QtCore.Qt.FocusReason(3)
+CLICKED= QtCore.Qt.FocusReason(4)
+CREATED_SUBWINDOW = QtCore.Qt.FocusReason(5)
 
+# Paje Events
 DefineBufferType = '0'
 CreateBuffer = '1'
 DefinePackageType = '2'
@@ -21,33 +25,12 @@ Clock = '8'
 DefineStatusColor = '9'
 DefineBufferColor = '10'
 
-SCREEN = '"SCREEN"'
-FETCH_BUFFER = '"FETCH_BUFFER"'
-DECODE_BUFFER = '"DECODE_BUFFER"'
-URS = '"URS"'
-UFU = '"UFU"'
-ROB = '"ROB"'
-MOB_r = '"MOB_r"'
-MOB_w = '"MOB_w"'
-
-PACKAGE_STATE_FREE = 'PACKAGE_STATE_FREE' 
-PACKAGE_STATE_WAIT = 'PACKAGE_STATE_WAIT'
-PACKAGE_STATE_READY = 'PACKAGE_STATE_READY'
-
+# Auxiliary dictionaries
 STATUS_COLORS = {}
 BUFFER_TYPES = {}
 BUFFER_IDS = {}
 PACKAGE_TYPES = {}
 
-# TODO: Adicionar informações extras na message box de conteudo dos pacotes (ver caderno) 
-    
-# EXTRA:
-    # TODO: corrigir erros ao settar geometria e usar mais de 1 tela
-    # TODO: Usar strip("_\"") para remover trailing caracters em vez de [1:-1]
-    # TODO: adicionar barra de execução, (tipo barra de play de video)
-    # TODO: Usar QProgressDialog quando tiver criando o vetor com os dados e seus eventos
-    # TODO: Crete custom scroolbar widgets for  the mdi subwindows
-    # TODO:
 
 class CustomSlider(QtWidgets.QSlider):
     def __init__(self, *args, **kwargs):
@@ -266,7 +249,7 @@ class Visualizer(QtWidgets.QMainWindow):
         self.settings.endGroup()
 
         # Give the main window focus
-        self.setFocus(PROGRAM_START)
+        self.setFocus(PROGRAM_STARTED)
 
         self.events = 0
 
@@ -336,7 +319,7 @@ class Visualizer(QtWidgets.QMainWindow):
         self.execution_mode = mode
         self.setFocus(CHANGED_MODE)
 
-# Controls
+    # Controls
     def addDockSpacing(self, dockArea):
         dock_widget = QtWidgets.QDockWidget(self)
         dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
@@ -525,10 +508,10 @@ class Visualizer(QtWidgets.QMainWindow):
         # Add the dock widget to the main window
         self.addDockWidget(dockArea, dock_widget)
 
-# Events
+    # Events
     def processPajeEvent(self):
         pajeEvent = self.parser.getEvent()
-        print(pajeEvent, end='')
+        # print(pajeEvent, end='')
 
         if pajeEvent == '\n':
             return
@@ -556,19 +539,16 @@ class Visualizer(QtWidgets.QMainWindow):
         self.events = self.events + 1
 
         evt = pajeEvent[:-1]
-
-        # if self.execution_mode != "QUICKSTEP":
         self.text_widgets['event'].setText('evento:\t%s...' % evt[:88] if len(evt) > 88 else 'evento:\t%s' % evt)
 
-        # split = pajeEvent.split()
         split = self.parser.splitEvent(pajeEvent)
-        # print(split)
+        print(split)
         eventName = split[0]
 
         # Definition events
         if eventName == DefineBufferType:
             _Type = split[1]
-            _Color = split[2][1:-1]
+            _Color = split[2].strip("\"")
             _IsContainer = eval(split[3])
 
             BUFFER_TYPES[_Type] = {"color": QtGui.QColor(_Color), "is_container": _IsContainer}
@@ -622,12 +602,11 @@ class Visualizer(QtWidgets.QMainWindow):
             self.selectors["Type"].addItem(PACKAGE_TYPES[_Id])
 
         elif eventName == DefineStatusColor:
-            _Status = split[1][1:-1]
-            _Color = split[2][1:-1]
+            _Status = split[1].strip("\"")
+            _Color = split[2].strip("\"")
 
             STATUS_COLORS[_Status] = QtGui.QColor(_Color)
     
-
         # Execution events        
         if eventName == InsertPackage:
             _TypeId = int(split[1])
@@ -640,7 +619,7 @@ class Visualizer(QtWidgets.QMainWindow):
                 if self.search:
                     if self.search['BufferId'] == _BufferId:
                         if self.search['Type'] == '\"OperationPackage\"' and PACKAGE_TYPES[_TypeId] == '\"UopPackage\"':
-                            if self.search['Id'][1:-1] == _Content.get('operation'):
+                            if self.search['Id'] == _Content.get('operation'):
                                 searchEnded = True
                                 self.search = None
                                 if self.execution_mode == 'CONTINUOUS':
@@ -698,6 +677,7 @@ class Visualizer(QtWidgets.QMainWindow):
                     buffer = self.buffers.get(bufferKey)
                     buffer.updateHistogramData(self.cycle, update_histogram=self.show_histogram)
 
+        # Handle advancing
         if self.execution_mode == 'CONTINUOUS' and self.search == None and not self.is_playing.get("triggered", False):
             if self.advance_type == 'EVENT':
                 if self.advance_executed < self.advance_increment - 1:
@@ -762,19 +742,14 @@ class Visualizer(QtWidgets.QMainWindow):
             self.timer.start(self.delay)
 
     def onSearch(self):
-        # Get the selected options from the selectors and input from line edit
-        Type = self.selectors["Type"].currentText()
-        _id = self.inputs['advanceUntil'].text()
-        Buffer = self.selectors["Buffer"].currentText()
-
         if self.found:
             self.found.selectedChange.emit(False)
             self.found = None
 
         self.search = {
-            'Type': Type,
-            'Id': '\"%s\"' % _id,
-            'BufferId': BUFFER_IDS[Buffer]
+            'Type': self.selectors['Type'].currentText(),
+            'Id': self.inputs['advanceUntil'].text(),
+            'BufferId': BUFFER_IDS[self.selectors['Buffer'].currentText()]
         }
 
         if self.execution_mode == 'STEP' or self.execution_mode == 'QUICKSTEP':
@@ -799,7 +774,7 @@ class Visualizer(QtWidgets.QMainWindow):
         self.sub_windows[_Id] = sub_window
         sub_window.showNormal()
         
-        self.setFocus(PROGRAM_START)
+        self.setFocus(CREATED_SUBWINDOW)
 
         return sub_window
 
@@ -809,7 +784,7 @@ class Visualizer(QtWidgets.QMainWindow):
             self.buffers[key].clearHistogramData(self.cycle, update_histogram=self.show_histogram)
             
 
-# Actions and Settings
+    # Actions and Settings
     def loadTrace(self):
         if self.is_playing.get("value", False):
             self.toggle_play_pause(self.is_playing.get("triggered", False))
@@ -961,7 +936,7 @@ class Visualizer(QtWidgets.QMainWindow):
             self.settings.endArray()
             self.settings.endGroup()
 
-# Main Window
+    # Main Window
     def closeEvent(self, event):
         # print("closeEvent")
         self.saveSubWindowStates()
@@ -995,12 +970,14 @@ class Visualizer(QtWidgets.QMainWindow):
         if self.is_playing.get("value", False):
             self.toggle_play_pause(self.is_playing.get("triggered", False))
 
+        for i in range(0, self.selectors['Type'].count()):
+            self.selectors['Type'].removeItem(0)
+
         for i in range(0, self.selectors['Buffer'].count()):
             self.selectors['Buffer'].removeItem(0)
 
         buffersIds = list(self.buffers.keys())
         for bufferId in buffersIds:
-
             packageIds = list(self.buffers[bufferId].packages.keys())
             for packageId in packageIds:
                 self.buffers[bufferId].removePackage(packageId)
