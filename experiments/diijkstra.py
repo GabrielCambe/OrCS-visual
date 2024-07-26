@@ -25,7 +25,7 @@ def processa_aresta(vertice1, vertice2):
 def busca(G, r):
     T = {}  # grafo vazio
     V1 = {}
-    processa(r)
+    processa_vertice(r)
     [r]  # lista inicial com o vértice r
     V2 = set()  # conjunto para os vértices processados
     T = set()  # conjunto das arestas processadas
