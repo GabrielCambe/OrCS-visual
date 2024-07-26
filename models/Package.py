@@ -1,3 +1,4 @@
+# import traceback
 import json
 from PyQt5 import QtWidgets, QtGui, QtCore
 
@@ -37,6 +38,7 @@ class PackageObject(QtWidgets.QGraphicsWidget):
     selectedChange = QtCore.pyqtSignal(bool, name="selectedChange")
 
     def __init__(self, _Id, _Type, _Content, STATUS_COLORS, mdi_area, position, *args, **kwargs):
+        self.render = True
         super().__init__(*args, **kwargs)
 
         self.content = _Content
@@ -59,18 +61,17 @@ class PackageObject(QtWidgets.QGraphicsWidget):
 
         # SubWindow Data
         self._mdiArea = mdi_area
-        # self.title = "%s: %s" %  (self._Type, self._Id)
         self.title = "%s: %s" %  (self._Type, self._Id_display)
         self.sub_window = None
 
         # Package Label
         self.text_widgets = {}
         
-        self.text_Id = "%s" % (self._Id[1:-1]) if Operation == None else "%s|%s" % (Operation, self._Id_display[1:-1])
+        self.text_Id = "%s" % (self._Id) if Operation == None else "%s|%s" % (Operation, self._Id_display)
         if len(self.text_Id) > 2:
-            self.display_text = "...%s" % self._Id_display[1:-1][-2:]
+            self.display_text = "...%s" % self._Id_display[-2:]
         else:
-            self.display_text = self._Id_display[1:-1][-2:]
+            self.display_text = self._Id_display[-2:]
         
         self.text_widgets["text"] = QtWidgets.QGraphicsProxyWidget(self)
         self.text_widgets["text"].setWidget(QtWidgets.QLabel(self.display_text))
@@ -183,7 +184,9 @@ class PackageObject(QtWidgets.QGraphicsWidget):
                 # self.bounding_box.setPen(QtCore.Qt.white)
 
                 self.render = True
-        except Exception:
+        except Exception as e:
+            # print(e)
+            # traceback.print_exc()
             pass
         super().resizeEvent(event)
 

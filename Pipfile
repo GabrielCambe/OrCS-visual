@@ -9,6 +9,7 @@ verify_ssl = true
 pyqt5 = "*"
 matplotlib = "*"
 numpy = "*"
+pipx = "*"
 
 [requires]
 python_version = "3.8"

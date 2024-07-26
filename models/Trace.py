@@ -58,3 +58,7 @@ class PajeParser():
         else:
             self.current_line = None
         return result
+
+    def splitEvent(self, s):
+        import re
+        return re.findall(r'\[.*?\]|{.*?}|"[^"]*"|\S+', s)

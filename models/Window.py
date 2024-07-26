@@ -1,18 +1,23 @@
 import time
+# import traceback
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 from . import Trace
 from . import Buffer
 
 
-PROGRAM_START = QtCore.Qt.FocusReason(0)
+# Screen focus reasons
+PROGRAM_STARTED = QtCore.Qt.FocusReason(0)
 EDITING_FINISHED = QtCore.Qt.FocusReason(1)
 CHANGED_MODE = QtCore.Qt.FocusReason(2)
 LOADED_TRACE = QtCore.Qt.FocusReason(3)
+CLICKED= QtCore.Qt.FocusReason(4)
+CREATED_SUBWINDOW = QtCore.Qt.FocusReason(5)
 
+# Paje Events
 DefineBufferType = '0'
 CreateBuffer = '1'
-PajeDefineEventType = '3'
+DefinePackageType = '2'
 InsertPackage = '5'
 RemovePackage = '6'
 UpdatePackage = '7'
@@ -20,32 +25,12 @@ Clock = '8'
 DefineStatusColor = '9'
 DefineBufferColor = '10'
 
-SCREEN = '"SCREEN"'
-FETCH_BUFFER = '"FETCH_BUFFER"'
-DECODE_BUFFER = '"DECODE_BUFFER"'
-URS = '"URS"'
-UFU = '"UFU"'
-ROB = '"ROB"'
-MOB_r = '"MOB_r"'
-MOB_w = '"MOB_w"'
-
-PACKAGE_STATE_FREE = 'PACKAGE_STATE_FREE' 
-PACKAGE_STATE_WAIT = 'PACKAGE_STATE_WAIT'
-PACKAGE_STATE_READY = 'PACKAGE_STATE_READY'
-
+# Auxiliary dictionaries
 STATUS_COLORS = {}
-BUFFER_COLORS = {}
+BUFFER_TYPES = {}
 BUFFER_IDS = {}
+PACKAGE_TYPES = {}
 
-# TODO: Adicionar informações extras na message box de conteudo dos pacotes (ver caderno) 
-    
-# EXTRA:
-    # TODO: corrigir erros ao settar geometria e usar mais de 1 tela
-    # TODO: Usar strip("_\"") para remover trailing caracters em vez de [1:-1]
-    # TODO: adicionar barra de execução, (tipo barra de play de video)
-    # TODO: Usar QProgressDialog quando tiver criando o vetor com os dados e seus eventos
-    # TODO: Crete custom scroolbar widgets for  the mdi subwindows
-    # TODO:
 
 class CustomSlider(QtWidgets.QSlider):
     def __init__(self, *args, **kwargs):
@@ -55,6 +40,28 @@ class CustomSlider(QtWidgets.QSlider):
         if e.type() == QtCore.QEvent.ToolTip:
             QtWidgets.QToolTip.showText(e.globalPos(), str(self.value()), self)
         return super().event(e)
+
+class ZoomableMdiArea(QtWidgets.QMdiArea):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setMouseTracking(True)
+        self.zoom_level = 1
+
+    def wheelEvent(self, event):
+        # Control key + Scroll for zooming
+        if event.modifiers() == QtCore.Qt.ControlModifier:
+            delta = event.angleDelta().y()
+            if delta > 0:
+                self.zoom_level += 0.1
+            elif delta < 0:
+                self.zoom_level -= 0.1
+            self.zoom_level = max(0.1, self.zoom_level)  # Prevent zoom_level from going below 0.1
+
+            # Apply zoom to each subwindow
+            for window in self.subWindowList():
+                window.setZoom(self.zoom_level)
+        else:
+            super().wheelEvent(event)
 
 
 class Visualizer(QtWidgets.QMainWindow):
@@ -102,7 +109,8 @@ class Visualizer(QtWidgets.QMainWindow):
         self.setGeometry(QtGui.QGuiApplication.primaryScreen().availableGeometry())
 
         # Central Widget
-        self.mdi_area = QtWidgets.QMdiArea()
+        # self.mdi_area = QtWidgets.QMdiArea()
+        self.mdi_area = ZoomableMdiArea()
         self.mdi_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.mdi_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.mdi_area.setBackground(QtGui.QBrush(QtGui.QColor('#C3B9FF'), QtCore.Qt.SolidPattern))
@@ -110,7 +118,7 @@ class Visualizer(QtWidgets.QMainWindow):
 
         # Add text to the statusBar
         self.statusBar().setStyleSheet("QStatusBar { border-top: 1px solid gray; }")
-        self.addText('cycle', "cycle:\t%s" % self.cycle, 150)
+        self.addText('cycle', "ciclo:\t%s" % self.cycle, 150)
 
         # Add control input fields
         self.addPlayPauseButton(QtCore.Qt.TopDockWidgetArea)
@@ -205,7 +213,7 @@ class Visualizer(QtWidgets.QMainWindow):
 
         # Settings menu and actions
         # Create settings
-        self.settings = QtCore.QSettings("HiPES", "OrCViz")
+        self.settings = QtCore.QSettings("HiPES", "VOrCS")
 
         fullscreen_action = QtWidgets.QAction("Tela Cheia", self)
         fullscreen_action.setShortcut("Ctrl+F")
@@ -226,37 +234,54 @@ class Visualizer(QtWidgets.QMainWindow):
             self.settings.setValue("FilePath", self.trace)
 
         file_path = self.settings.value("FilePath") 
-        self.addText('event', 'event:\t', 900)
-        self.addText('trace', 'trace:\t', 600)
-
+        self.addText('event', 'evento:\t', 900)
+        self.addText('trace', 'traço:\t', 600)
 
         if file_path:
             try:
                 self.parser = Trace.PajeParser(file_path)
-                self.text_widgets['trace'].setText('trace:\t%s...' % file_path[:88] if len(file_path) > 88 else 'trace:\t%s' % file_path)
+                self.text_widgets['trace'].setText('traço:\t%s...' % file_path[:88] if len(file_path) > 88 else 'traço:\t%s' % file_path)
             except Exception as e:
-                print(e)
+                # print(e)
+                # traceback.print_exc()
+                pass
 
         self.settings.endGroup()
 
         # Give the main window focus
-        self.setFocus(PROGRAM_START)
+        self.setFocus(PROGRAM_STARTED)
 
-        self.start_time = 0
-        self.end_time = 0
-        self.processing_time = 0
         self.events = 0
+
+        self.advance_start_time = 0
+        self.advance_start_event = 0
+        self.advance_start_cycle = 0
+        self.advance_processing_time = 0
 
         if self.play:
             self.toggle_play_pause(True)
-        
-        self.start_time = time.perf_counter()
-
-        self.advance_start_time = 0
-        self.advance_end_time = 0
-        self.advance_processing_time = 0
 
         # self.statusBar().showMessage("Ready")
+
+    def perf(self, start=False, end=False, reset=False):
+        if start:
+            self.advance_start_time = time.perf_counter()
+            self.advance_start_event = self.events
+            self.advance_start_cycle = self.cycle
+
+        elif end:
+            self.advance_processing_time = time.perf_counter() - self.advance_start_time
+            print("========== Advance ======================")
+            print(f"processing_time: {self.advance_processing_time:.3f} seconds")
+            print("\t %.3f events/second" % ((self.events - self.advance_start_event)/self.advance_processing_time))
+            print("\t %.3f cycles/second" % ((self.cycle - self.advance_start_cycle)/self.advance_processing_time))
+            print("=========================================\n")
+
+        if reset:
+            self.advance_start_time = 0
+            self.advance_start_event = 0
+            self.advance_start_cycle = 0
+            self.advance_processing_time = 0
 
     def clear(self):
         self.settings.clear()
@@ -271,13 +296,22 @@ class Visualizer(QtWidgets.QMainWindow):
         self.is_playing["triggered"] = triggered_by_click
 
         if self.is_playing.get("value", False):
-            self.buttons["playPause"].setText("Play")
+            self.buttons["playPause"].setText("Iniciar")
             self.is_playing["value"] = not self.is_playing["value"]
             self.timer.stop()
+
+            self.perf(end=True, reset=True)
+
         else:
+            if (self.execution_mode != 'CONTINUOUS'):
+                self.buttons["executionMode:CONTINUOUS"].setChecked(True)
+
             if self.parser == None:
                 self.loadTrace()
-            self.buttons["playPause"].setText("Pause")
+
+            self.perf(start=True)
+
+            self.buttons["playPause"].setText("Pausar")
             self.is_playing["value"] = not self.is_playing["value"]
             self.timer.start(self.delay)
 
@@ -285,7 +319,7 @@ class Visualizer(QtWidgets.QMainWindow):
         self.execution_mode = mode
         self.setFocus(CHANGED_MODE)
 
-# Controls
+    # Controls
     def addDockSpacing(self, dockArea):
         dock_widget = QtWidgets.QDockWidget(self)
         dock_widget.setFeatures(QtWidgets.QDockWidget.NoDockWidgetFeatures)
@@ -312,11 +346,11 @@ class Visualizer(QtWidgets.QMainWindow):
         bottom_widget.setFixedSize(250, 40)  # Adjust the size as needed
 
         bottom_layout = QtWidgets.QHBoxLayout()
-        self.buttons["playPause"] = QtWidgets.QPushButton("Play")
+        self.buttons["playPause"] = QtWidgets.QPushButton("Iniciar")
         self.buttons["playPause"].clicked.connect(lambda: self.toggle_play_pause(True))
         bottom_layout.addWidget(self.buttons["playPause"])
 
-        self.buttons["reset"] = QtWidgets.QPushButton("Reset")
+        self.buttons["reset"] = QtWidgets.QPushButton("Reiniciar")
         self.buttons["reset"].clicked.connect(self.resetWindow)
         bottom_layout.addWidget(self.buttons["reset"])
 
@@ -379,7 +413,7 @@ class Visualizer(QtWidgets.QMainWindow):
         self.selectors[name].currentTextChanged.connect(lambda text: self.changeAdvanceType(text))
         layout.addWidget(self.selectors[name])
 
-        self.buttons[name] = QtWidgets.QPushButton(text="Confirmar")
+        self.buttons[name] = QtWidgets.QPushButton(text="Avançar")
         self.buttons[name].clicked.connect(lambda: self.advance())
         layout.addWidget(self.buttons[name])
 
@@ -403,9 +437,9 @@ class Visualizer(QtWidgets.QMainWindow):
         
         # Create selectors (combo boxes)
         self.selectors["Type"] = QtWidgets.QComboBox()
-        self.selectors["Type"].addItems(['\"OperationPackage\"', '\"UopPackage\"'])
+        self.selectors["Type"].setFixedWidth(200)
         self.selectors["Buffer"] = QtWidgets.QComboBox()
-        self.selectors["Buffer"].setFixedWidth(200)
+        self.selectors["Buffer"].setFixedWidth(100)
         
         # Create a line editor
         self.inputs[name] = QtWidgets.QLineEdit()
@@ -474,12 +508,18 @@ class Visualizer(QtWidgets.QMainWindow):
         # Add the dock widget to the main window
         self.addDockWidget(dockArea, dock_widget)
 
-# Events
+    # Events
     def processPajeEvent(self):
         pajeEvent = self.parser.getEvent()
         # print(pajeEvent, end='')
 
+        if pajeEvent == '\n':
+            return
+
         if pajeEvent is None:
+            if self.is_playing.get("value", False):
+                self.toggle_play_pause(self.is_playing.get("triggered", False))
+
             if self.skip_exit_confirmation:
                 return self.close()
             
@@ -490,26 +530,28 @@ class Visualizer(QtWidgets.QMainWindow):
             msgBox.setText("O traço terminou de ser processado.")
             msgBox.setWindowTitle("Traço Finalizado")
             msgBox.setStandardButtons(QtWidgets.QMessageBox.Close)
-            msgBox.buttonClicked.connect(self.close)
+            msgBox.button(QtWidgets.QMessageBox.Close).setText("Fechar")
+            reset_button = msgBox.addButton("Reiniciar", QtWidgets.QMessageBox.ActionRole)
+            reset_button.clicked.connect(self.resetWindow)
             msgBox.exec()
             return
-        else:
-            self.events = self.events + 1
+        
+        self.events = self.events + 1
 
         evt = pajeEvent[:-1]
+        self.text_widgets['event'].setText('evento:\t%s...' % evt[:88] if len(evt) > 88 else 'evento:\t%s' % evt)
 
-        # if self.execution_mode != "QUICKSTEP":
-        self.text_widgets['event'].setText('event:\t%s...' % evt[:88] if len(evt) > 88 else 'event:\t%s' % evt)
-
-        split = pajeEvent.split()
+        split = self.parser.splitEvent(pajeEvent)
+        print(split)
         eventName = split[0]
 
         # Definition events
         if eventName == DefineBufferType:
-            Type = split[1]
-            Color = split[2][1:-1]
+            _Type = split[1]
+            _Color = split[2].strip("\"")
+            _IsContainer = eval(split[3])
 
-            BUFFER_COLORS[Type] = QtGui.QColor(Color)
+            BUFFER_TYPES[_Type] = {"color": QtGui.QColor(_Color), "is_container": _IsContainer}
        
         elif eventName == CreateBuffer:
             _Id = int(split[1])
@@ -517,20 +559,19 @@ class Visualizer(QtWidgets.QMainWindow):
             _Type = split[3]
             _Width = int(split[4])
             _Size = int(split[5])
-            _IsContainer = eval(split[6])
 
             BUFFER_IDS[_Name] = _Id
 
             if not self.loadSubWindowStates(
-                _Id, _Name, _Type, _IsContainer,
+                _Id, _Name, _Type,
                 self,
-                BUFFER_COLORS=BUFFER_COLORS,
+                BUFFER_TYPES=BUFFER_TYPES,
                 grid_geometry=(_Width, _Size)
             ):
                 self.addBuffer(
-                    _Id, _Name, _Type, _IsContainer,
+                    _Id, _Name, _Type,
                     self,
-                    BUFFER_COLORS=BUFFER_COLORS,
+                    BUFFER_TYPES=BUFFER_TYPES,
                     grid_geometry=(_Width, _Size),
                 )
             
@@ -539,7 +580,7 @@ class Visualizer(QtWidgets.QMainWindow):
                 if not self.loadHistogramSubwindowState(
                     _histogramId,
                     _Name,
-                    self.buffers[_Id].occupancy_histogram_data,
+                    self.buffers[_Id],
                     self.sub_windows[_Id],
                     self.mdi_area
                 ):
@@ -547,21 +588,28 @@ class Visualizer(QtWidgets.QMainWindow):
                     self.sub_windows[_Id].histogram = Buffer.HistogramSubWindow(
                         _histogramId,
                         _Name,
-                        self.buffers[_Id].occupancy_histogram_data,
+                        self.buffers[_Id],
                         self.mdi_area
                     )
                     self.sub_windows[_Id].histogram.showNormal()
 
+        elif eventName == DefinePackageType:
+            _Id = int(split[1])
+            _Name = split[2]
+            
+            PACKAGE_TYPES[_Id] = _Name
+
+            self.selectors["Type"].addItem(PACKAGE_TYPES[_Id])
+
         elif eventName == DefineStatusColor:
-            Status = split[1][1:-1]
-            Color = split[2][1:-1]
+            _Status = split[1].strip("\"")
+            _Color = split[2].strip("\"")
 
-            STATUS_COLORS[Status] = QtGui.QColor(Color)
+            STATUS_COLORS[_Status] = QtGui.QColor(_Color)
     
-
         # Execution events        
         if eventName == InsertPackage:
-            _Type = split[1]
+            _TypeId = int(split[1])
             _Id = split[2]
             _BufferIds = eval(split[3])
             _Content = eval(split[4])
@@ -570,8 +618,8 @@ class Visualizer(QtWidgets.QMainWindow):
             for _BufferId in _BufferIds:
                 if self.search:
                     if self.search['BufferId'] == _BufferId:
-                        if self.search['Type'] == '\"OperationPackage\"' and _Type == '\"UopPackage\"':
-                            if self.search['Id'][1:-1] == _Content.get('operation'):
+                        if self.search['Type'] == '\"OperationPackage\"' and PACKAGE_TYPES[_TypeId] == '\"UopPackage\"':
+                            if self.search['Id'] == _Content.get('operation'):
                                 searchEnded = True
                                 self.search = None
                                 if self.execution_mode == 'CONTINUOUS':
@@ -585,7 +633,7 @@ class Visualizer(QtWidgets.QMainWindow):
 
             if self.execution_mode != "QUICKSTEP" or searchEnded:
                 self.buffers[_BufferId].addPackage(
-                    _Type, _Id, _Content,
+                    PACKAGE_TYPES[_TypeId], _Id, _Content,
                     STATUS_COLORS=STATUS_COLORS
                 )
             
@@ -593,17 +641,8 @@ class Visualizer(QtWidgets.QMainWindow):
                 self.buffers[_BufferId].packages[_Id].selectedChange.emit(True)
                 self.found = self.buffers[_BufferId].packages[_Id]
  
-        elif eventName == RemovePackage:
-            _Type = split[1]
-            _Id = split[2]
-            _BufferIds = eval(split[3])
-
-            if self.execution_mode != "QUICKSTEP":
-                for _BufferId in _BufferIds:
-                    self.buffers[_BufferId].removePackage(_Id)
-                
         elif eventName == UpdatePackage:
-            _Type = split[1]
+            _TypeId = int(split[1])
             _Id = split[2]
             _BufferIds = eval(split[3])
             _Content = eval(split[4])
@@ -612,6 +651,15 @@ class Visualizer(QtWidgets.QMainWindow):
                 for _BufferId in _BufferIds:
                     self.buffers[_BufferId].updatePackage(_Id, _Content)
 
+        elif eventName == RemovePackage:
+            _TypeId = int(split[1])
+            _Id = split[2]
+            _BufferIds = eval(split[3])
+
+            if self.execution_mode != "QUICKSTEP":
+                for _BufferId in _BufferIds:
+                    self.buffers[_BufferId].removePackage(_Id)
+                
         elif eventName == Clock:
             _Cycle = int(split[1])
 
@@ -623,12 +671,13 @@ class Visualizer(QtWidgets.QMainWindow):
                         if self.cycle >= self.jumpToCycle:
                             self.toggle_play_pause()
 
-                self.text_widgets['cycle'].setText('cycle:\t%s...' % str(self.cycle)[:88] if len(str(self.cycle)) > 88 else 'cycle:\t%s' % self.cycle)
-                        
+                self.text_widgets['cycle'].setText('ciclo:\t%s...' % str(self.cycle)[:88] if len(str(self.cycle)) > 88 else 'ciclo:\t%s' % self.cycle)
+     
                 for bufferKey in self.buffers:
                     buffer = self.buffers.get(bufferKey)
-                    buffer.updateHistogramData(self.cycle)
+                    buffer.updateHistogramData(self.cycle, update_histogram=self.show_histogram)
 
+        # Handle advancing
         if self.execution_mode == 'CONTINUOUS' and self.search == None and not self.is_playing.get("triggered", False):
             if self.advance_type == 'EVENT':
                 if self.advance_executed < self.advance_increment - 1:
@@ -644,6 +693,8 @@ class Visualizer(QtWidgets.QMainWindow):
         if self.parser == None:
             self.loadTrace()
 
+        self.perf(start=True)
+
         if self.execution_mode == 'STEP' or self.execution_mode == 'QUICKSTEP':
             if self.advance_type == 'EVENT':
                 for i in range(self.advance_increment):
@@ -653,6 +704,13 @@ class Visualizer(QtWidgets.QMainWindow):
                 while self.cycle < self.jumpToCycle:
                     self.processPajeEvent()
                 self.jumpToCycle = -1
+
+            self.perf(end=True, reset=True)
+
+            if self.execution_mode == 'QUICKSTEP':
+                self.clearBuffers()
+                self.text_widgets['cycle'].setText('ciclo:\t%s...' % str(self.cycle)[:88] if len(str(self.cycle)) > 88 else 'ciclo:\t%s' % self.cycle)
+
         elif self.execution_mode == 'CONTINUOUS':
             if self.advance_type == 'EVENT':
                 self.toggle_play_pause()
@@ -670,7 +728,9 @@ class Visualizer(QtWidgets.QMainWindow):
     def changeAdvanceIncrement(self, increment):
         try:
             self.advance_increment = int(increment)
-        except:
+        except Exception as e:
+            # print(e)
+            # traceback.print_exc()
             pass
         # self.setFocus(EDITING_FINISHED)
 
@@ -682,19 +742,14 @@ class Visualizer(QtWidgets.QMainWindow):
             self.timer.start(self.delay)
 
     def onSearch(self):
-        # Get the selected options from the selectors and input from line edit
-        Type = self.selectors["Type"].currentText()
-        _id = self.inputs['advanceUntil'].text()
-        Buffer = self.selectors["Buffer"].currentText()
-
         if self.found:
             self.found.selectedChange.emit(False)
             self.found = None
 
         self.search = {
-            'Type': Type,
-            'Id': '\"%s\"' % _id,
-            'BufferId': BUFFER_IDS[Buffer]
+            'Type': self.selectors['Type'].currentText(),
+            'Id': self.inputs['advanceUntil'].text(),
+            'BufferId': BUFFER_IDS[self.selectors['Buffer'].currentText()]
         }
 
         if self.execution_mode == 'STEP' or self.execution_mode == 'QUICKSTEP':
@@ -703,28 +758,33 @@ class Visualizer(QtWidgets.QMainWindow):
         elif self.execution_mode == 'CONTINUOUS':
             self.toggle_play_pause()
 
-    def addBuffer(self, _Id, _Name, _Type, _IsContainer, window, BUFFER_COLORS, grid_geometry):
+    def addBuffer(self, _Id, _Name, _Type, window, BUFFER_TYPES, grid_geometry):
         # print("addBuffer", _Id)
         self.selectors['Buffer'].addItem(_Name)
 
         sub_window = Buffer.BufferSubWindow(
             _Id, _Name, _Type,
             self.buffers,
-            BUFFER_COLORS,
+            BUFFER_TYPES,
             grid_geometry,
             window,
-            is_container=_IsContainer, 
             save_in_settings=True,
             parent=self.mdi_area,
         )
         self.sub_windows[_Id] = sub_window
         sub_window.showNormal()
         
-        self.setFocus(PROGRAM_START)
+        self.setFocus(CREATED_SUBWINDOW)
 
         return sub_window
 
-# Actions and Settings
+    def clearBuffers(self):
+        for key in self.buffers.keys():
+            self.buffers[key].clearBuffer()
+            self.buffers[key].clearHistogramData(self.cycle, update_histogram=self.show_histogram)
+            
+
+    # Actions and Settings
     def loadTrace(self):
         if self.is_playing.get("value", False):
             self.toggle_play_pause(self.is_playing.get("triggered", False))
@@ -737,7 +797,7 @@ class Visualizer(QtWidgets.QMainWindow):
         if file_path:
             self.resetWindow()
             self.parser = Trace.PajeParser(file_path)
-            self.text_widgets['trace'].setText('trace:\t%s...' % file_path[:88] if len(file_path) > 88 else 'trace:\t%s' % file_path)
+            self.text_widgets['trace'].setText('traço:\t%s...' % file_path[:88] if len(file_path) > 88 else 'traço:\t%s' % file_path)
             self.buttons["executionMode:STEP"].setChecked(True)
 
             self.settings.beginGroup("Trace")
@@ -747,9 +807,9 @@ class Visualizer(QtWidgets.QMainWindow):
         self.setFocus(LOADED_TRACE)
 
     def loadSubWindowStates(self,
-        _Id, _Name, _Type, _IsContainer,
+        _Id, _Name, _Type,
         window,
-        BUFFER_COLORS=None,
+        BUFFER_TYPES=None,
         grid_geometry=None
     ):
         # print("loadSubWindowStates")
@@ -773,9 +833,9 @@ class Visualizer(QtWidgets.QMainWindow):
                 hidden = self.settings.value("hidden", type=bool)
 
                 sub_window = self.addBuffer(
-                    _Id, _Name, _Type, _IsContainer,
+                    _Id, _Name, _Type,
                     window,
-                    BUFFER_COLORS=BUFFER_COLORS,
+                    BUFFER_TYPES=BUFFER_TYPES,
                     grid_geometry=grid_geometry,
                 )
 
@@ -791,7 +851,7 @@ class Visualizer(QtWidgets.QMainWindow):
 
         return loaded
 
-    def loadHistogramSubwindowState(self, _Id, _Name, data, sub_window, parent):
+    def loadHistogramSubwindowState(self, _Id, _Name, buffer, sub_window, parent):
         # print("loadHistogramSubwindowState")
         loaded = False
 
@@ -813,7 +873,7 @@ class Visualizer(QtWidgets.QMainWindow):
                 hidden = self.settings.value("hidden", type=bool)
 
                 # print("addHistogram", _Id)
-                sub_window.histogram = Buffer.HistogramSubWindow(_Id, _Name, data, parent=parent)
+                sub_window.histogram = Buffer.HistogramSubWindow(_Id, _Name, buffer, parent=parent)
                 # print("setGeometry", x, y, width, height)
                 sub_window.histogram.showNormal()
                 sub_window.histogram.setGeometry(x, y, width, height)
@@ -836,7 +896,7 @@ class Visualizer(QtWidgets.QMainWindow):
             self.settings.beginWriteArray("SubWindowList")
 
             for sub_window in self.mdi_area.subWindowList():
-                if sub_window.save_in_settings and not sub_window.is_histogram:
+                if sub_window.save_in_settings and not sub_window.is_plot:
                     # print("saved", sub_window.windowTitle())
                     self.settings.setArrayIndex(i)
                     self.settings.setValue("_Id", sub_window.buffer._Id)
@@ -860,7 +920,7 @@ class Visualizer(QtWidgets.QMainWindow):
             self.settings.beginWriteArray("HistogramList")
 
             for sub_window in self.mdi_area.subWindowList():
-                if sub_window.save_in_settings and sub_window.is_histogram:
+                if sub_window.save_in_settings and sub_window.is_plot:
                     # print("saved", sub_window.windowTitle())
                     self.settings.setArrayIndex(i)
                     self.settings.setValue("_Id", sub_window._Id)
@@ -876,28 +936,29 @@ class Visualizer(QtWidgets.QMainWindow):
             self.settings.endArray()
             self.settings.endGroup()
 
-# Main Window
+    # Main Window
     def closeEvent(self, event):
         # print("closeEvent")
         self.saveSubWindowStates()
         if self.show_histogram:
             self.saveHistogramSubWindowStates()
         
-        with open("occupancy_histogram_data.txt" if self.plot_name == None else "%s.txt" % self.plot_name, "w+") as file:
+        with open("occupancy_data.txt" if self.plot_name == None else "%s_occupancy.txt" % self.plot_name, "w+") as file:
             file.write("cycle:%s\n" % self.cycle)
             for buffer_name, buffer in self.buffers.items():
                 file.write("%s:%s\n" % (buffer._Name, buffer.occupancy_histogram_data[1]))
 
-        self.end_time = time.perf_counter()
-        self.processing_time = self.end_time - self.start_time
-        
-        with open("timing_data.txt" if self.plot_name == None else "%s_timing_data.txt" % self.plot_name, "w+") as file:
-            try:
-                file.write("processing_time: %d seconds\n" % self.processing_time)
-                file.write("\t %f events/seconds\n" % (self.events/self.processing_time))
-                file.write("\t %f cycles/seconds\n" %  ((self.cycle + 1)/self.processing_time))
-            except Exception as e:
-                file.write("Profiling error: %s\n" % e)
+        with open("phases_data.txt" if self.plot_name == None else "%s_phases.txt" % self.plot_name, "w+") as file:
+            for buffer_name, buffer in self.buffers.items():
+                file.write("%s:%s\n" % (buffer._Name, buffer.phases_data))
+
+        # with open("timing_data.txt" if self.plot_name == None else "%s_timing_data.txt" % self.plot_name, "w+") as file:
+        #     try:
+        #         file.write("processing_time: %d seconds\n" % self.processing_time)
+        #         file.write("\t %f events/second\n" % (self.events/self.processing_time))
+        #         file.write("\t %f cycles/second\n" %  ((self.cycle + 1)/self.processing_time))
+        #     except Exception as e:
+        #         file.write("Profiling error: %s\n" % e)
 
         event.accept()
 
@@ -909,12 +970,14 @@ class Visualizer(QtWidgets.QMainWindow):
         if self.is_playing.get("value", False):
             self.toggle_play_pause(self.is_playing.get("triggered", False))
 
+        for i in range(0, self.selectors['Type'].count()):
+            self.selectors['Type'].removeItem(0)
+
         for i in range(0, self.selectors['Buffer'].count()):
             self.selectors['Buffer'].removeItem(0)
 
         buffersIds = list(self.buffers.keys())
         for bufferId in buffersIds:
-
             packageIds = list(self.buffers[bufferId].packages.keys())
             for packageId in packageIds:
                 self.buffers[bufferId].removePackage(packageId)
@@ -934,9 +997,9 @@ class Visualizer(QtWidgets.QMainWindow):
         self.advance_executed = int(0)
 
         
-        self.text_widgets['event'].setText('event:\t%s' % "")
-        self.text_widgets['cycle'].setText('cycle:\t%s' % "-1")
-        self.text_widgets['trace'].setText('trace:\t%s' % "")
+        self.text_widgets['event'].setText('evento:\t%s' % "")
+        self.text_widgets['cycle'].setText('ciclo:\t%s' % "-1")
+        self.text_widgets['trace'].setText('traço:\t%s' % "")
 
         self.settings.beginGroup("Trace")
         file_path = self.settings.value("FilePath")
@@ -944,9 +1007,11 @@ class Visualizer(QtWidgets.QMainWindow):
         if file_path:
             try:
                 self.parser = Trace.PajeParser(file_path)
-                self.text_widgets['trace'].setText('trace:\t%s...' % file_path[:88] if len(file_path) > 88 else 'trace:\t%s' % file_path)
+                self.text_widgets['trace'].setText('traço:\t%s...' % file_path[:88] if len(file_path) > 88 else 'traço:\t%s' % file_path)
                 
             except Exception as e:
-                print(e)
+                # print(e)
+                # traceback.print_exc()
+                pass
 
         self.settings.endGroup()
